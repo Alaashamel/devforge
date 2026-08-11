@@ -1,4 +1,4 @@
-name: Repository Validation
+name: Quality Gate
 
 on:
   push:
@@ -6,8 +6,8 @@ on:
   pull_request:
 
 jobs:
-  validate:
-    name: Validate structure, config and secrets
+  quality:
+    name: Validate, lint, test and build
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -17,6 +17,19 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: '20'
+          cache: npm
 
-      - name: Validate repository
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Validate repository structure and secrets
         run: npm run validate
+
+      - name: Lint
+        run: npm run lint
+
+      - name: Test
+        run: npm test
+
+      - name: Build
+        run: npm run build

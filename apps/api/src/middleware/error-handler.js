@@ -1,7 +1,6 @@
 import { AppError } from '../utils/errors.js';
 
 export function errorHandler() {
-  // eslint-disable-next-line no-unused-vars
   return (err, req, res, _next) => {
     const log = req.log;
 
