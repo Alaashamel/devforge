@@ -18,6 +18,7 @@ Added:
 - `README.md`, `ARCHITECTURE.md`, `ROADMAP.md` with the 13-phase roadmap.
 - Architecture documents: system overview, backend, frontend, AI service,
   real-time, data model (ERD proposal), API design.
+- Issue roadmap mapping planned work to all 13 phases.
 - Six Architecture Decision Records (database, authentication, AI boundary,
   real-time, monorepo, frontend stack).
 - Community documents: `CONTRIBUTING.md`, `CODE_OF_CONDUCT.md`,
