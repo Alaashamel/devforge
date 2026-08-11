@@ -31,9 +31,9 @@ Deliverables:
 - [x] Architecture Decision Records
 - [x] CONTRIBUTING.md, CODE_OF_CONDUCT.md, SECURITY.md, CHANGELOG.md
 - [x] GitHub issue templates, PR template, CODEOWNERS
-- [ ] Publish repository to a remote and enable branch protection
+- [x] Publish repository to a remote and enable branch protection
 
-## Phase 1 — Application Foundation
+## Phase 1 — Application Foundation (current)
 
 - [x] Initialize `apps/web` (Vite + React) and `apps/api` (Express).
 - [x] Wire environment configuration (Zod-validated) and structured logging.
