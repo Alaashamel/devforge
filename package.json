@@ -18,8 +18,8 @@
     "dev:web": "npm run dev -w apps/web",
     "build": "npm run build -w apps/web",
     "validate": "node infrastructure/scripts/validate-repo.mjs",
-    "test": "npm run test -ws --if-present",
-    "lint": "npm run lint -ws --if-present"
+    "test": "npm run test --workspaces --if-present",
+    "lint": "npm run lint --workspaces --if-present"
   },
   "keywords": [
     "developer-platform",
