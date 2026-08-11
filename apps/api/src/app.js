@@ -6,6 +6,7 @@ import { requestId } from './middleware/request-id.js';
 import { requestLogger } from './middleware/request-logger.js';
 import { notFoundHandler } from './middleware/not-found.js';
 import { errorHandler } from './middleware/error-handler.js';
+import { healthRouter } from './modules/health/routes.js';
 
 export function createApp() {
   const app = express();
@@ -27,6 +28,8 @@ export function createApp() {
       health: '/api/v1/health',
     });
   });
+
+  app.use('/api/v1/health', healthRouter);
 
   app.use(notFoundHandler());
   app.use(errorHandler());
