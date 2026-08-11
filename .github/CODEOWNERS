@@ -1,0 +1,20 @@
+# DevForge code owners
+# See https://docs.github.com/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-code-owners
+
+# Default owners for the whole repository.
+* @your-org/engineering
+
+# Architecture and decisions are reviewed by everyone on the platform team.
+docs/architecture/ @your-org/platform
+docs/decisions/ @your-org/platform
+ARCHITECTURE.md @your-org/platform
+
+# Infrastructure and CI.
+infrastructure/ @your-org/platform
+.github/workflows/ @your-org/platform
+docker-compose.yml @your-org/platform
+
+# Security-sensitive surfaces.
+SECURITY.md @your-org/platform
+apps/api/src/modules/auth/ @your-org/platform
+apps/api/src/middleware/ @your-org/platform
