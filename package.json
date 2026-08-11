@@ -1,0 +1,24 @@
+{
+  "name": "devforge",
+  "version": "0.1.0",
+  "private": true,
+  "description": "AI-powered developer platform and engineering workspace",
+  "license": "MIT",
+  "workspaces": [
+    "apps/*",
+    "packages/*"
+  ],
+  "engines": {
+    "node": ">=20.0.0",
+    "npm": ">=10.0.0"
+  },
+  "scripts": {
+    "validate": "node infrastructure/scripts/validate-repo.mjs"
+  },
+  "keywords": [
+    "developer-platform",
+    "project-management",
+    "ai-code-review",
+    "engineering-workspace"
+  ]
+}
