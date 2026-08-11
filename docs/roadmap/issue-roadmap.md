@@ -20,15 +20,15 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Scaffold `apps/api` Express app with config validation | feature | Zod-validated env, graceful boot |
-| Scaffold `apps/web` Vite + React app | feature | |
-| API health endpoint + readiness probe | feature | 🧩 |
-| Centralized error handler + request IDs | feature | Stable error envelope |
-| Structured JSON logging middleware | feature | |
-| Web app shell: router, layout, theme tokens | feature | |
-| API client with token injection + 401 refresh | feature | |
-| Smoke tests: health endpoint, web boot | testing | |
-| Wire root-level dev script (`npm run dev`) | devops | 🧩 |
+| Scaffold `apps/api` Express app with config validation | feature | ✅ done — Zod-validated env, graceful boot |
+| Scaffold `apps/web` Vite + React app | feature | ✅ done |
+| API health endpoint + readiness probe | feature | ✅ done 🧩 |
+| Centralized error handler + request IDs | feature | ✅ done — stable error envelope |
+| Structured JSON logging middleware | feature | ✅ done — pino with redaction |
+| Web app shell: router, layout, theme tokens | feature | ✅ done |
+| API client with token injection + 401 refresh | feature | Client added; auth lands in Phase 3 |
+| Smoke tests: health endpoint, web boot | testing | ✅ done — 17 tests passing |
+| Wire root-level dev script (`npm run dev`) | devops | ✅ done 🧩 |
 
 ## Phase 2 — Database
 

@@ -35,12 +35,14 @@ Deliverables:
 
 ## Phase 1 — Application Foundation
 
-- Initialize `apps/web` (Vite + React) and `apps/api` (Express).
-- Wire environment configuration and shared config package.
-- Establish API error handling, logging and request IDs.
-- Database connection layer with health endpoint.
-- Frontend shell with routing, theming and API client.
-- Smoke tests for the health endpoint and frontend boot.
+- [x] Initialize `apps/web` (Vite + React) and `apps/api` (Express).
+- [x] Wire environment configuration (Zod-validated) and structured logging.
+- [x] API error handling with request IDs and a stable error envelope.
+- [x] Database connection layer with health endpoint and readiness probe.
+- [x] Frontend shell with routing, theming, API client and health dashboard.
+- [x] Smoke tests for the health endpoint and frontend boot (17 tests).
+- [x] Shared ESLint config and CI quality gate (validate, lint, test, build).
+- [ ] Auth-ready API client (token injection + 401 refresh) — Phase 3.
 
 ## Phase 2 — Database
 

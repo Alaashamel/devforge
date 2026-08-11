@@ -1,14 +1,16 @@
 # DevForge
 
+[![Quality Gate](https://github.com/Alaashamel/devforge/actions/workflows/validate.yml/badge.svg)](https://github.com/Alaashamel/devforge/actions/workflows/validate.yml)
+
 **AI-powered developer platform and engineering workspace.**
 
 DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 0 — Product Foundation.** The repository is under active
-> development. There is no runnable application yet; Phase 1 introduces the
-> frontend and API foundations.
+> **Status: Phase 1 — Application Foundation.** The web app and API run locally
+> (`npm run dev`) with a health-checked dashboard, 17 passing tests, shared
+> linting and a CI quality gate. Phase 2 (database) is next.
 
 ---
 
@@ -97,21 +99,38 @@ See [ROADMAP.md](./ROADMAP.md) for details.
 
 ## Getting started
 
-> Not yet runnable. The commands below will become active in **Phase 1**.
-
 ```bash
 # Clone the repository
-git clone https://github.com/your-org/devforge.git
+git clone https://github.com/Alaashamel/devforge.git
 cd devforge
 
 # Install dependencies
 npm install
 
-# Run validation checks
-npm run validate
+# Copy the environment template (sensible defaults work without it)
+cp .env.example .env
 
-# Start the API and web application (Phase 1+)
+# Start the API and web application
 npm run dev
+```
+
+- **API:** http://localhost:4000 — health at http://localhost:4000/api/v1/health
+- **Web:** http://localhost:5173
+
+The readiness check reports a 503 "degraded" status when PostgreSQL is
+unavailable. Start the dev database with `docker compose up -d db` to see a
+fully healthy API.
+
+## Development commands
+
+```bash
+npm run dev         # API (:4000) and web (:5173) concurrently
+npm run dev:api     # API only
+npm run dev:web     # Web only
+npm run lint        # ESLint across all workspaces
+npm test            # Vitest across all workspaces
+npm run build       # Production web build
+npm run validate    # Repository structure and secrets check
 ```
 
 ## License
