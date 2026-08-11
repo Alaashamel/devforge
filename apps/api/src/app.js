@@ -2,6 +2,10 @@ import express from 'express';
 import helmet from 'helmet';
 import cors from 'cors';
 import { env } from './config/env.js';
+import { requestId } from './middleware/request-id.js';
+import { requestLogger } from './middleware/request-logger.js';
+import { notFoundHandler } from './middleware/not-found.js';
+import { errorHandler } from './middleware/error-handler.js';
 
 export function createApp() {
   const app = express();
@@ -13,6 +17,9 @@ export function createApp() {
   app.use(cors({ origin: env.corsOrigins, credentials: true }));
   app.use(express.json({ limit: '1mb' }));
 
+  app.use(requestId());
+  app.use(requestLogger());
+
   app.get('/', (_req, res) => {
     res.json({
       service: 'devforge-api',
@@ -20,6 +27,9 @@ export function createApp() {
       health: '/api/v1/health',
     });
   });
+
+  app.use(notFoundHandler());
+  app.use(errorHandler());
 
   return app;
 }
