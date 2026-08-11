@@ -1,0 +1,23 @@
+{
+  "name": "@devforge/api",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "DevForge API service (Express)",
+  "main": "src/server.js",
+  "scripts": {
+    "dev": "node --env-file-if-exists=../../.env --watch src/server.js",
+    "start": "node --env-file-if-exists=../../.env src/server.js",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "lint": "eslint ."
+  },
+  "dependencies": {
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
+    "helmet": "^8.3.0",
+    "pg": "^8.23.0",
+    "pino": "^10.3.1",
+    "zod": "^4.4.3"
+  }
+}
