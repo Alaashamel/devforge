@@ -13,7 +13,9 @@
     "npm": ">=10.0.0"
   },
   "scripts": {
-    "validate": "node infrastructure/scripts/validate-repo.mjs"
+    "validate": "node infrastructure/scripts/validate-repo.mjs",
+    "test": "npm run test -ws --if-present",
+    "lint": "npm run lint -ws --if-present"
   },
   "keywords": [
     "developer-platform",

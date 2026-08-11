@@ -102,12 +102,16 @@ function checkGitHubConfig() {
         fail(`unreadable file ${relative(ROOT, file)}: ${err.message}`);
       }
     }
-    if (ext === '.json') {
-      try {
-        JSON.parse(readFileSync(file, 'utf8'));
-      } catch (err) {
-        fail(`invalid JSON in ${relative(ROOT, file)}: ${err.message}`);
-      }
+  }
+}
+
+function checkJsonFiles() {
+  const files = walk(ROOT).filter((file) => extname(file) === '.json');
+  for (const file of files) {
+    try {
+      JSON.parse(readFileSync(file, 'utf8'));
+    } catch (err) {
+      fail(`invalid JSON in ${relative(ROOT, file)}: ${err.message}`);
     }
   }
 }
@@ -148,5 +152,6 @@ function report() {
 checkDirectories();
 checkFiles();
 checkGitHubConfig();
+checkJsonFiles();
 checkSecrets();
 report();
