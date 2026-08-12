@@ -16,6 +16,16 @@ import { createAccessTokenService } from './modules/auth/tokens.js';
 import { createPasswordService } from './modules/auth/password.js';
 import { createMailer } from './modules/auth/mailer.js';
 import { createRateLimiter, AUTH_RATE_LIMITS } from './middleware/rate-limit.js';
+import { createOrganizationService } from './modules/organizations/service.js';
+import { createOrganizationRouter } from './modules/organizations/routes.js';
+import { createProjectService } from './modules/projects/service.js';
+import { createProjectRouter } from './modules/projects/routes.js';
+import { createMilestoneService } from './modules/milestones/service.js';
+import { createMilestoneRouter } from './modules/milestones/routes.js';
+import { createLabelService } from './modules/labels/service.js';
+import { createLabelRouter } from './modules/labels/routes.js';
+import { createTaskService } from './modules/tasks/service.js';
+import { createTaskRouter } from './modules/tasks/routes.js';
 
 function buildDefaultAuth() {
   const accessTokens = createAccessTokenService({
@@ -41,7 +51,17 @@ function buildDefaultAuth() {
   return { service, middleware, limiter };
 }
 
-export function createApp({ auth = null } = {}) {
+export function buildDefaultModules({ pool: dbPool = pool, resolveRole }) {
+  return {
+    organizations: createOrganizationService({ pool: dbPool }),
+    projects: createProjectService({ pool: dbPool }),
+    milestones: createMilestoneService({ pool: dbPool }),
+    labels: createLabelService({ pool: dbPool }),
+    tasks: createTaskService({ pool: dbPool, resolveRole }),
+  };
+}
+
+export function createApp({ auth = null, modules = null } = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -63,6 +83,7 @@ export function createApp({ auth = null } = {}) {
   });
 
   const authBundle = auth ?? buildDefaultAuth();
+  const moduleBundle = modules ?? buildDefaultModules({ pool, resolveRole: authBundle.service.resolveEffectiveRole });
 
   app.use('/api/v1/health', healthRouter);
   app.use(
@@ -71,6 +92,45 @@ export function createApp({ auth = null } = {}) {
       service: authBundle.service,
       requireAuth: authBundle.middleware.requireAuth,
       limiter: authBundle.limiter,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations',
+    createOrganizationRouter({
+      service: moduleBundle.organizations,
+      requireAuth: authBundle.middleware.requireAuth,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/projects',
+    authBundle.middleware.requireAuth,
+    createProjectRouter({
+      service: moduleBundle.projects,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/projects/:projectId/milestones',
+    authBundle.middleware.requireAuth,
+    createMilestoneRouter({
+      service: moduleBundle.milestones,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/projects/:projectId/labels',
+    authBundle.middleware.requireAuth,
+    createLabelRouter({
+      service: moduleBundle.labels,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/projects/:projectId/tasks',
+    authBundle.middleware.requireAuth,
+    createTaskRouter({
+      service: moduleBundle.tasks,
+      authorize: authBundle.middleware.authorize,
     }),
   );
 

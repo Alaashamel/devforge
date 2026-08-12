@@ -1,5 +1,5 @@
 import pg from 'pg';
-import { createApp } from '../../src/app.js';
+import { createApp, buildDefaultModules } from '../../src/app.js';
 import { createAuthService } from '../../src/modules/auth/service.js';
 import { createAuthMiddleware } from '../../src/modules/auth/middleware.js';
 import { createAccessTokenService } from '../../src/modules/auth/tokens.js';
@@ -59,5 +59,6 @@ export function createTestApp({ pool, mailer, limiter }) {
     resolveRole: service.resolveEffectiveRole,
   });
   const authLimiter = limiter ?? createRateLimiter({ limits: AUTH_RATE_LIMITS });
-  return createApp({ auth: { service, middleware, limiter: authLimiter } });
+  const modules = buildDefaultModules({ pool, resolveRole: service.resolveEffectiveRole });
+  return createApp({ auth: { service, middleware, limiter: authLimiter }, modules });
 }

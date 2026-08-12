@@ -6,6 +6,7 @@ const MATRIX = {
   'org.manage': ['owner', 'admin'],
   'members.manage': ['owner', 'admin'],
   'projects.create': ['owner', 'admin', 'maintainer'],
+  'projects.manage': ['owner', 'admin', 'maintainer'],
   'projects.delete': ['owner', 'admin', 'maintainer'],
   'tasks.manage': ['owner', 'admin', 'maintainer', 'developer'],
   'project.view': ['owner', 'admin', 'maintainer', 'developer', 'viewer'],

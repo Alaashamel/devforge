@@ -11,6 +11,7 @@ describe('permission matrix', () => {
     ['org.manage', { owner: true, admin: true, maintainer: false, developer: false, viewer: false }],
     ['members.manage', { owner: true, admin: true, maintainer: false, developer: false, viewer: false }],
     ['projects.create', { owner: true, admin: true, maintainer: true, developer: false, viewer: false }],
+    ['projects.manage', { owner: true, admin: true, maintainer: true, developer: false, viewer: false }],
     ['projects.delete', { owner: true, admin: true, maintainer: true, developer: false, viewer: false }],
     ['tasks.manage', { owner: true, admin: true, maintainer: true, developer: true, viewer: false }],
     ['project.view', { owner: true, admin: true, maintainer: true, developer: true, viewer: true }],

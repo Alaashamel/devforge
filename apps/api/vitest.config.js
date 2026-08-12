@@ -5,5 +5,6 @@ export default defineConfig({
     environment: 'node',
     setupFiles: ['./test/setup.js'],
     include: ['test/**/*.test.js'],
+    fileParallelism: false,
   },
 });
