@@ -5,6 +5,8 @@ import { api } from '../services/api.js';
 import { useWorkspaceStore } from '../stores/workspace.js';
 import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '../components/form.jsx';
 import { StatusPill } from '../components/status-pill.jsx';
+import { DEFAULT_COLUMNS, computeDrop } from '../lib/board.js';
+import { buildRoadmap } from '../lib/roadmap.js';
 
 const priorityTone = {
   low: 'bg-muted',
@@ -13,17 +15,23 @@ const priorityTone = {
   urgent: 'bg-red-400',
 };
 
-const DEFAULT_COLUMNS = ['todo', 'in_progress', 'done'];
-
-function TaskCard({ projectId, task, milestones }) {
+function TaskCard({ projectId, task, milestones, onDragStart, onDragEnd, onDragOver, onDrop, isDragging }) {
   const milestone = milestones.find((m) => m.id === task.milestoneId);
   return (
-    <Link
-      to={`/projects/${projectId}/tasks/${task.id}`}
-      className="block rounded-md border border-line bg-canvas p-3 hover:border-accent/50"
+    <div
+      draggable
+      onDragStart={onDragStart}
+      onDragEnd={onDragEnd}
+      onDragOver={onDragOver}
+      onDrop={onDrop}
+      className={`rounded-md border border-line bg-canvas p-3 transition-opacity hover:border-accent/50 ${
+        isDragging ? 'opacity-40' : ''
+      }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="text-sm text-ink">{task.title}</span>
+        <Link to={`/projects/${projectId}/tasks/${task.id}`} className="text-sm text-ink hover:text-accent">
+          {task.title}
+        </Link>
         <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${priorityTone[task.priority] ?? 'bg-muted'}`} />
       </div>
       <div className="mt-2 flex flex-wrap items-center gap-1.5">
@@ -46,7 +54,7 @@ function TaskCard({ projectId, task, milestones }) {
         <span>{task.assignee ? task.assignee.name : 'Unassigned'}</span>
         <span>{task.commentCount} comments</span>
       </div>
-    </Link>
+    </div>
   );
 }
 
@@ -55,13 +63,16 @@ export function ProjectDetail() {
   const queryClient = useQueryClient();
   const orgId = useWorkspaceStore((s) => s.orgId);
 
+  const taskKeys = ['organizations', orgId, 'projects', projectId, 'tasks'];
+  const projectKeys = ['organizations', orgId, 'projects', projectId];
+
   const projectQuery = useQuery({
-    queryKey: ['organizations', orgId, 'projects', projectId],
+    queryKey: projectKeys,
     queryFn: () => api.getProject(orgId, projectId),
     enabled: Boolean(orgId),
   });
   const tasksQuery = useQuery({
-    queryKey: ['organizations', orgId, 'projects', projectId, 'tasks'],
+    queryKey: taskKeys,
     queryFn: () => api.listTasks(orgId, projectId, { pageSize: 100 }),
     enabled: Boolean(orgId),
   });
@@ -83,6 +94,8 @@ export function ProjectDetail() {
 
   const [error, setError] = useState(null);
   const [quickOpen, setQuickOpen] = useState(false);
+  const [view, setView] = useState('board');
+  const [draggedId, setDraggedId] = useState(null);
   const [title, setTitle] = useState('');
   const [status, setStatus] = useState('todo');
   const [priority, setPriority] = useState('medium');
@@ -92,8 +105,8 @@ export function ProjectDetail() {
   const createTaskMutation = useMutation({
     mutationFn: (payload) => api.createTask(orgId, projectId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks'] });
-      queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId] });
+      queryClient.invalidateQueries({ queryKey: taskKeys });
+      queryClient.invalidateQueries({ queryKey: projectKeys });
       setQuickOpen(false);
       setTitle('');
       setStatus('todo');
@@ -121,6 +134,29 @@ export function ProjectDetail() {
     onError: (err) => setError(err.message),
   });
 
+  const moveMutation = useMutation({
+    mutationFn: ({ taskId, status: nextStatus, position }) =>
+      api.updateTask(orgId, projectId, taskId, { status: nextStatus, position }),
+    onMutate: async ({ taskId, status: nextStatus, position }) => {
+      await queryClient.cancelQueries({ queryKey: taskKeys });
+      const previous = queryClient.getQueryData(taskKeys);
+      queryClient.setQueryData(taskKeys, (tasks) =>
+        (tasks ?? []).map((t) => (t.id === taskId ? { ...t, status: nextStatus, position } : t)),
+      );
+      return { previous };
+    },
+    onError: (err, _vars, context) => {
+      if (context?.previous) {
+        queryClient.setQueryData(taskKeys, context.previous);
+      }
+      setError(err.message);
+    },
+    onSettled: () => {
+      queryClient.invalidateQueries({ queryKey: taskKeys });
+      queryClient.invalidateQueries({ queryKey: projectKeys });
+    },
+  });
+
   const [newMilestone, setNewMilestone] = useState('');
   const [newLabel, setNewLabel] = useState('');
 
@@ -136,10 +172,22 @@ export function ProjectDetail() {
     }));
   })();
 
+  function dropOnColumn(columnName, beforeId) {
+    if (!draggedId) return;
+    const dragged = columns.flatMap((c) => c.tasks).find((t) => t.id === draggedId);
+    const drop = computeDrop(columns, { draggedId, column: columnName, beforeId });
+    const noop = drop && dragged && drop.sameColumn && drop.position === dragged.position;
+    if (drop && !noop) {
+      moveMutation.mutate({ taskId: draggedId, ...drop });
+    }
+    setDraggedId(null);
+  }
+
   const project = projectQuery.data;
   const milestones = milestonesQuery.data ?? [];
   const labels = labelsQuery.data ?? [];
   const members = membersQuery.data ?? [];
+  const roadmap = buildRoadmap(tasksQuery.data ?? [], milestones);
 
   function onCreateTask(event) {
     event.preventDefault();
@@ -189,89 +237,176 @@ export function ProjectDetail() {
 
       <section className="space-y-3">
         <div className="flex items-center justify-between">
-          <h2 className="text-sm font-semibold">Board</h2>
-          <button type="button" onClick={() => setQuickOpen((v) => !v)} className={ghostButtonClass}>
-            {quickOpen ? 'Close' : 'Quick add task'}
-          </button>
+          <div className="flex items-center gap-2">
+            {['board', 'roadmap'].map((v) => (
+              <button
+                key={v}
+                type="button"
+                onClick={() => setView(v)}
+                className={`rounded-md border px-3 py-1.5 text-xs capitalize ${
+                  view === v
+                    ? 'border-accent bg-accent text-canvas'
+                    : 'border-line text-muted hover:bg-panel hover:text-ink'
+                }`}
+              >
+                {v}
+              </button>
+            ))}
+          </div>
+          {view === 'board' ? (
+            <button type="button" onClick={() => setQuickOpen((v) => !v)} className={ghostButtonClass}>
+              {quickOpen ? 'Close' : 'Quick add task'}
+            </button>
+          ) : null}
         </div>
 
-        {quickOpen ? (
-          <form onSubmit={onCreateTask} className="grid gap-3 rounded-lg border border-line bg-panel p-4 sm:grid-cols-5">
-            <div className="sm:col-span-2">
-              <Field label="Title">
-                <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} required />
-              </Field>
-            </div>
-            <Field label="Status">
-              <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
-                <option value="todo">todo</option>
-                <option value="in_progress">in_progress</option>
-                <option value="done">done</option>
-              </select>
-            </Field>
-            <Field label="Priority">
-              <select className={inputClass} value={priority} onChange={(e) => setPriority(e.target.value)}>
-                <option value="low">low</option>
-                <option value="medium">medium</option>
-                <option value="high">high</option>
-                <option value="urgent">urgent</option>
-              </select>
-            </Field>
-            <div className="flex items-end">
-              <button type="submit" disabled={createTaskMutation.isPending} className={buttonClass}>
-                {createTaskMutation.isPending ? 'Adding…' : 'Add'}
-              </button>
-            </div>
-            <Field label="Assignee">
-              <select className={inputClass} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
-                <option value="">Unassigned</option>
-                {members.map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.name}
-                  </option>
-                ))}
-              </select>
-            </Field>
-            <Field label="Milestone">
-              <select className={inputClass} value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
-                <option value="">None</option>
-                {milestones.map((m) => (
-                  <option key={m.id} value={m.id}>
-                    {m.title}
-                  </option>
-                ))}
-              </select>
-            </Field>
-          </form>
-        ) : null}
+        {view === 'board' ? (
+          <>
+            {quickOpen ? (
+              <form onSubmit={onCreateTask} className="grid gap-3 rounded-lg border border-line bg-panel p-4 sm:grid-cols-5">
+                <div className="sm:col-span-2">
+                  <Field label="Title">
+                    <input className={inputClass} value={title} onChange={(e) => setTitle(e.target.value)} required />
+                  </Field>
+                </div>
+                <Field label="Status">
+                  <select className={inputClass} value={status} onChange={(e) => setStatus(e.target.value)}>
+                    <option value="todo">todo</option>
+                    <option value="in_progress">in_progress</option>
+                    <option value="done">done</option>
+                  </select>
+                </Field>
+                <Field label="Priority">
+                  <select className={inputClass} value={priority} onChange={(e) => setPriority(e.target.value)}>
+                    <option value="low">low</option>
+                    <option value="medium">medium</option>
+                    <option value="high">high</option>
+                    <option value="urgent">urgent</option>
+                  </select>
+                </Field>
+                <div className="flex items-end">
+                  <button type="submit" disabled={createTaskMutation.isPending} className={buttonClass}>
+                    {createTaskMutation.isPending ? 'Adding…' : 'Add'}
+                  </button>
+                </div>
+                <Field label="Assignee">
+                  <select className={inputClass} value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)}>
+                    <option value="">Unassigned</option>
+                    {members.map((m) => (
+                      <option key={m.userId} value={m.userId}>
+                        {m.name}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+                <Field label="Milestone">
+                  <select className={inputClass} value={milestoneId} onChange={(e) => setMilestoneId(e.target.value)}>
+                    <option value="">None</option>
+                    {milestones.map((m) => (
+                      <option key={m.id} value={m.id}>
+                        {m.title}
+                      </option>
+                    ))}
+                  </select>
+                </Field>
+              </form>
+            ) : null}
 
-        {tasksQuery.isPending ? (
-          <p className="text-sm text-muted">Loading tasks…</p>
-        ) : tasksQuery.isError ? (
-          <ErrorBanner>{tasksQuery.error.message}</ErrorBanner>
-        ) : (
-          <div className="grid gap-4 md:grid-cols-3">
-            {columns.map((column) => (
-              <div key={column.name} className="rounded-lg border border-line bg-panel p-3">
-                <div className="mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted">
-                  <span>{column.name}</span>
-                  <span>{column.tasks.length}</span>
-                </div>
-                <div className="space-y-2">
-                  {column.tasks.map((task) => (
-                    <TaskCard
-                      key={task.id}
-                      projectId={projectId}
-                      task={task}
-                      milestones={milestones}
-                    />
-                  ))}
-                  {column.tasks.length === 0 ? (
-                    <p className="text-xs text-muted">No tasks.</p>
-                  ) : null}
-                </div>
+            {tasksQuery.isPending ? (
+              <p className="text-sm text-muted">Loading tasks…</p>
+            ) : tasksQuery.isError ? (
+              <ErrorBanner>{tasksQuery.error.message}</ErrorBanner>
+            ) : (
+              <div className="grid gap-4 md:grid-cols-3">
+                {columns.map((column) => (
+                  <div
+                    key={column.name}
+                    onDragOver={(e) => e.preventDefault()}
+                    onDrop={() => dropOnColumn(column.name, undefined)}
+                    className="rounded-lg border border-line bg-panel p-3"
+                  >
+                    <div className="mb-2 flex items-center justify-between text-[11px] font-medium uppercase tracking-wider text-muted">
+                      <span>{column.name}</span>
+                      <span>{column.tasks.length}</span>
+                    </div>
+                    <div className="space-y-2">
+                      {column.tasks.map((task) => (
+                        <TaskCard
+                          key={task.id}
+                          projectId={projectId}
+                          task={task}
+                          milestones={milestones}
+                          isDragging={draggedId === task.id}
+                          onDragStart={() => setDraggedId(task.id)}
+                          onDragEnd={() => setDraggedId(null)}
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => {
+                            e.stopPropagation();
+                            dropOnColumn(column.name, task.id);
+                          }}
+                        />
+                      ))}
+                      {column.tasks.length === 0 ? (
+                        <p className="text-xs text-muted">No tasks.</p>
+                      ) : null}
+                    </div>
+                  </div>
+                ))}
               </div>
+            )}
+          </>
+        ) : (
+          <div className="space-y-4">
+            {roadmap.groups.map((group) => (
+              <section key={group.milestone.id} className="rounded-lg border border-line bg-panel p-4">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <h3 className="text-sm font-semibold text-ink">{group.milestone.title}</h3>
+                  <div className="flex items-center gap-2">
+                    <StatusPill label={group.milestone.status} tone={group.milestone.status === 'done' ? 'good' : 'neutral'} />
+                    {group.milestone.dueDate ? (
+                      <span className="text-xs text-muted">due {group.milestone.dueDate}</span>
+                    ) : null}
+                    <span className="text-xs text-muted">{group.tasks.length} tasks</span>
+                  </div>
+                </div>
+                <ul className="mt-3 space-y-1.5">
+                  {group.tasks.map((t) => (
+                    <li key={t.id} className="flex items-center gap-2 text-sm">
+                      <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${priorityTone[t.priority] ?? 'bg-muted'}`} />
+                      <Link to={`/projects/${projectId}/tasks/${t.id}`} className="text-ink hover:text-accent">
+                        {t.title}
+                      </Link>
+                      <span className="ml-auto text-xs text-muted">{t.status}</span>
+                      <span className="text-xs text-muted">{t.assignee ? t.assignee.name : 'Unassigned'}</span>
+                    </li>
+                  ))}
+                  {group.tasks.length === 0 ? (
+                    <li className="text-xs text-muted">No tasks in this milestone.</li>
+                  ) : null}
+                </ul>
+              </section>
             ))}
+            <section className="rounded-lg border border-dashed border-line p-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold text-ink">Backlog</h3>
+                <span className="text-xs text-muted">{roadmap.backlog.length} tasks</span>
+              </div>
+              <ul className="mt-3 space-y-1.5">
+                {roadmap.backlog.map((t) => (
+                  <li key={t.id} className="flex items-center gap-2 text-sm">
+                    <span className={`h-1.5 w-1.5 shrink-0 rounded-full ${priorityTone[t.priority] ?? 'bg-muted'}`} />
+                    <Link to={`/projects/${projectId}/tasks/${t.id}`} className="text-ink hover:text-accent">
+                      {t.title}
+                    </Link>
+                    <span className="ml-auto text-xs text-muted">{t.status}</span>
+                    <span className="text-xs text-muted">{t.assignee ? t.assignee.name : 'Unassigned'}</span>
+                  </li>
+                ))}
+                {roadmap.backlog.length === 0 ? (
+                  <li className="text-xs text-muted">All tasks are in a milestone.</li>
+                ) : null}
+              </ul>
+            </section>
           </div>
         )}
       </section>
