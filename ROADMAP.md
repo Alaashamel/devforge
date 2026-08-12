@@ -51,13 +51,15 @@ Deliverables:
 - [x] Seed scripts for local development.
 - [x] Document indexes, constraints and ERD (see `docs/architecture/data-model.md`).
 
-## Phase 3 — Authentication
+## Phase 3 — Authentication (current)
 
-- Registration, login, logout, email verification, password reset.
-- JWT access + refresh token rotation with reuse detection.
-- RBAC roles and permission matrix.
-- Rate limiting on auth endpoints.
-- Test suite covering happy paths and security failures.
+- [x] Registration, login, logout, email verification, password reset.
+- [x] JWT access + refresh token rotation with reuse detection.
+- [x] RBAC roles and permission matrix.
+- [x] Rate limiting on auth endpoints.
+- [x] Test suite covering happy paths and security failures.
+- [ ] Email provider wiring for production deliveries (dev links are
+      returned/logged locally).
 
 ## Phase 4 — Project Management
 

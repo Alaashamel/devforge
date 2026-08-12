@@ -78,3 +78,35 @@ Changed:
 
 - Dev Postgres binds host port `5433` (keeps other local projects using
   `5432` untouched); `DATABASE_URL` defaults and `.env.example` updated.
+
+### Phase 3 — Authentication
+
+Added:
+
+- `apps/api` auth module (`/api/v1/auth`): registration, email verification,
+  login, logout, refresh, forgot/reset password and `GET /me`, all behind
+  Zod request validation with a strict body policy.
+- Argon2id password hashing (`@node-rs/argon2`) with tunable work factors.
+- Short-lived HS256 access tokens (`jose`, default 15m) as bearer JWTs and
+  opaque rotating refresh tokens (7d) stored as SHA-256 hashes server-side.
+- Refresh token rotation with **reuse detection**: replaying a rotated or
+  revoked token revokes the whole token family for the user.
+- RBAC permission matrix (owner/admin/maintainer/developer/viewer) with a
+  `requireAuth` + `authorize(permission)` middleware stack; org roles and
+  project roles compose with the more permissive winning (ADR-002).
+- Per-route rate limiting on all auth endpoints (in-memory sliding window,
+  `429 RATE_LIMITED` with `Retry-After`; Redis-backed store planned for the
+  real-time phase).
+- Auth integration tests (happy + failure paths) against a dedicated
+  `devforge_test` database: 63 API tests total, plus unit tests for the
+  permission matrix, JWT/token utilities and the rate limiter.
+- Web auth flow: login/register/verify-email/forgot-password/reset-password
+  pages, a session store (refresh token persisted, access token in memory),
+  an `AuthGuard` for protected routes, and API-client token injection with
+  single-retry on 401 refresh.
+
+Security notes:
+
+- Email delivery is not wired yet: in development the verification/reset
+  links are returned in the register response and logged; production
+  requires an email provider and never exposes tokens in responses.
