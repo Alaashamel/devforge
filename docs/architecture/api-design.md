@@ -95,6 +95,42 @@ Org roles (from membership) and project roles (project_members) compose: the
 **more permissive** wins, Owner is always supreme. Every protected route
 declares the required permission; unauthorized access returns `403 FORBIDDEN`.
 
+## 5b. Project management resources
+
+Phase 4 routes follow the `/:orgId → /:projectId → resource` nesting:
+
+```
+GET/POST        /api/v1/organizations/:orgId/projects
+GET/PATCH/DELETE /api/v1/organizations/:orgId/projects/:projectId
+PUT/DELETE      /api/v1/organizations/:orgId/projects/:projectId/members/:userId
+GET/POST        /api/v1/organizations/:orgId/projects/:projectId/milestones
+GET/PATCH/DELETE /api/v1/organizations/:orgId/projects/:projectId/milestones/:milestoneId
+GET/POST        /api/v1/organizations/:orgId/projects/:projectId/labels
+GET/PATCH/DELETE /api/v1/organizations/:orgId/projects/:projectId/labels/:labelId
+GET/POST        /api/v1/organizations/:orgId/projects/:projectId/tasks
+GET/PATCH/DELETE /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId
+GET/POST        /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/comments
+PATCH/DELETE    /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/comments/:commentId
+PUT             /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/labels
+GET             /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/activity
+GET/POST        /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/dependencies
+DELETE          /api/v1/organizations/:orgId/projects/:projectId/tasks/:taskId/dependencies/:dependsOnId
+```
+
+Conventions specific to this module:
+
+- **Label replacement** (`PUT …/labels`) replaces the task's full label set;
+  the response embeds `labels: [{ id, name, color }]`.
+- **Audit ledger** (`GET …/activity`) records actor-scoped events — `created`,
+  `status_change`, `priority_change`, `assignee_change`, `milestone_change`,
+  `labels_change`, `comment`, `dependency_added`/`removed` — written in the
+  same transaction as the change.
+- **Dates** are `YYYY-MM-DD` strings in both requests and responses
+  (pg `date` columns are converted so values are timezone-independent).
+- **Aggregates** on list responses: projects return `taskCount`,
+  `memberCount` and `taskCounts.byStatus`; milestones and labels return
+  `taskCount`.
+
 ## 6. Validation
 
 - Zod schemas live in each module's `schemas.js` and mirror frontend forms.

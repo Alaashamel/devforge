@@ -121,6 +121,13 @@ The readiness check reports a 503 "degraded" status when PostgreSQL is
 unavailable. Start the dev database with `docker compose up -d postgres` to see
 a fully healthy API.
 
+After seeding (`npm run db:seed`), these accounts are available with password
+`DevForgeDev123!`:
+
+- `alaa@devforge.test` — owner of the DevForge Inc. org
+- `jordan@devforge.test` — admin (and owner of Acme Labs)
+- `sam@devforge.test` — developer (email unverified)
+
 ## Development commands
 
 ```bash

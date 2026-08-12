@@ -110,3 +110,54 @@ Security notes:
 - Email delivery is not wired yet: in development the verification/reset
   links are returned in the register response and logged; production
   requires an email provider and never exposes tokens in responses.
+
+### Phase 4 — Project Management
+
+Added:
+
+- `apps/api` organization module (`/api/v1/organizations`): list organizations
+  the caller belongs to, with the caller's computed role.
+- Projects module (`/api/v1/organizations/:orgId/projects`): full CRUD with
+  a `key` (2–6 `[A-Z0-9]`), optional `defaultPriority`, soft-archived
+  projects, member management (`PUT`/`DELETE …/members/:userId`) and
+  `memberCount`/`taskCount` plus `taskCounts.byStatus` aggregates.
+- Milestones module (`…/milestones`): CRUD with `planned`/`active`/`done`
+  status, `YYYY-MM-DD` due dates and `taskCount`.
+- Labels module (`…/labels`): CRUD with hex color validation, per-project
+  unique names (`409 CONFLICT` on duplicates) and `taskCount`.
+- Tasks module (`…/tasks`): CRUD with status/priority/type, assignee and
+  milestone references, optional `parentId`, `dueDate`, `estimate`, plus
+  `?status=`/`?priority=`/`?type=`/`?assigneeId=`/`?milestoneId=`/`?label=`
+  filters, `?q=` search, `?sort=` and pagination.
+- Task comments (`…/tasks/:taskId/comments`): create/list/update/delete.
+- Task label replacement (`PUT …/tasks/:taskId/labels`) storing `labels[]`
+  as `{id, name, color}` in task responses.
+- Task activity ledger (`GET …/tasks/:taskId/activity`): actor-scoped audit
+  events (`created`, `status_change`, `priority_change`, `labels_change`,
+  `comment`, `dependency_added`, …) written in the same transaction as the
+  change.
+- Task dependencies (`…/dependencies`): list (`dependsOn`/`dependedOnBy`),
+  add and remove, rejecting self/foreign-project dependencies (`409`).
+- RBAC wired across the modules: `projects.create`, `projects.manage`,
+  `projects.delete`, `tasks.manage` and `project.view` enforce the composed
+  org/project role (more permissive wins).
+- Web UI: an org selector in the app shell (persisted via Zustand), a
+  Projects list with create/archive, a project detail page with a kanban
+  board (quick-add tasks, status columns), milestones and labels, and a task
+  detail page with edit form, label chips, comments, activity and
+  dependencies.
+- Web API client methods for all of the above plus 6 new client tests;
+  `listOrganizations`/`listProjects`/… support nested paths, query-string
+  building and 204 handling.
+- Seed data upgraded to RFC-4122 v4-compatible deterministic UUIDs so seeded
+  users/orgs pass `uuid` validation in request bodies.
+
+Changed:
+
+- `apps/api/test` suites run serially (`fileParallelism: false`) because
+  they share the `devforge_test` database.
+- Task label aggregation returns a single JSONB array of
+  `{id, name, color}` instead of parallel distinct arrays (NULL-safe).
+- pg `date` columns are mapped back to `YYYY-MM-DD` strings in responses so
+  dates are timezone-independent.
+- Test counts: 98 API tests (9 files), 23 web tests, 15 database tests.
