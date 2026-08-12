@@ -34,15 +34,16 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Database migration tooling in `packages/database` | feature | |
-| Identity tables migration (users, refresh/verify/reset tokens) | feature | |
-| Organization tables migration (orgs, members, teams) | feature | |
-| Project tables migration (projects, tasks, labels, comments, activity) | feature | |
-| GitHub tables migration (connections, repositories, PRs, webhooks) | feature | |
-| Collaboration tables migration (notifications, activities) | feature | |
-| AI tables migration (analyses, conversations, messages, jobs) | feature | |
-| Seed script for local development | feature | 🧩 |
-| Index review + query plan checks | performance | |
+| Database migration tooling in `packages/database` | feature | ✅ done — versioned runner + CLI |
+| Identity tables migration (users, refresh/verify/reset tokens) | feature | ✅ done |
+| Organization tables migration (orgs, members, teams) | feature | ✅ done |
+| Project tables migration (projects, tasks, labels, comments, activity) | feature | ✅ done |
+| GitHub tables migration (connections, repositories, PRs, webhooks) | feature | ✅ done |
+| Collaboration tables migration (notifications, activities) | feature | ✅ done |
+| AI tables migration (analyses, conversations, messages, jobs) | feature | ✅ done |
+| Analytics migration (developer_metrics) | feature | ✅ done |
+| Seed script for local development | feature | ✅ done 🧩 |
+| Index review + query plan checks | performance | 7 baseline migrations + FK/hot-path indexes landed |
 
 ## Phase 3 — Authentication
 

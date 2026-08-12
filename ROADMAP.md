@@ -44,12 +44,12 @@ Deliverables:
 - [x] Shared ESLint config and CI quality gate (validate, lint, test, build).
 - [ ] Auth-ready API client (token injection + 401 refresh) — Phase 3.
 
-## Phase 2 — Database
+## Phase 2 — Database (current)
 
-- Define migration tooling and baseline schema.
-- Implement identity, organization, project, github and analytics tables.
-- Seed scripts for local development.
-- Document indexes, constraints and ERD (see `docs/architecture/data-model.md`).
+- [x] Define migration tooling and baseline schema.
+- [x] Implement identity, organization, project, github and analytics tables.
+- [x] Seed scripts for local development.
+- [x] Document indexes, constraints and ERD (see `docs/architecture/data-model.md`).
 
 ## Phase 3 — Authentication
 

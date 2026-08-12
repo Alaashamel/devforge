@@ -54,3 +54,27 @@ Changed:
   the API boundary with Zod (ADR-006).
 - Root `test`/`lint` scripts use the long `--workspaces` flag.
 - Removed the now-unneeded `eslint-disable` directive in the error handler.
+
+### Phase 2 — Database
+
+Added:
+
+- `@devforge/database`: versioned migration tooling (`packages/database`) with
+  a `schema_migrations` tracking table, transaction-wrapped apply/rollback,
+  and `up`/`down` migration modules.
+- Migration CLI (`npm run db:migrate` / `db:down` / `db:status` /
+  `db:migrate:create`) reading `DATABASE_URL`, plus idempotent local seed data
+  (`npm run db:seed`).
+- Seven baseline migrations implementing the data model: identity, orgs,
+  projects/work items, GitHub integration, collaboration, AI, analytics
+  (29 tables, uuid PKs, FK indexes, constrained text and soft deletes).
+- Test suite for the runner (ordering, idempotency, rollback, atomic
+  rollback on failure) plus schema assertions against a dedicated
+  `devforge_test` database.
+- Postgres service container in CI so migration tests run in the Quality
+  Gate.
+
+Changed:
+
+- Dev Postgres binds host port `5433` (keeps other local projects using
+  `5432` untouched); `DATABASE_URL` defaults and `.env.example` updated.

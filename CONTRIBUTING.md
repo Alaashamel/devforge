@@ -28,8 +28,9 @@ it.
    npm run validate
    ```
 
-> The runnable local development setup (database, API, web) arrives in
-> **Phase 1**. Until then the validation gate is the only local check.
+> Local development runs the full stack: `docker compose up -d postgres`,
+> `npm run db:migrate`, then `npm run dev` (see [README](./README.md)).
+> The validation gate (`npm run validate`) is always a local check.
 
 ## Development workflow
 

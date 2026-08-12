@@ -1,7 +1,8 @@
-# Data Model — Entity Relationship Diagram (proposal)
+# Data Model — Entity Relationship Diagram
 
 PostgreSQL is the system of record. This document is the authoritative
-proposal for the relational schema; migrations land in Phase 2.
+proposal for the relational schema; it is implemented as the baseline
+migrations in [`packages/database`](../../packages/database/migrations/).
 
 ## 1. Conventions
 
@@ -222,8 +223,12 @@ error, attempts, created_at, updated_at.
 
 ## 6. Migration strategy
 
-- Migrations versioned and applied with the `packages/database` tooling.
-- Breaking changes applied in two steps (expand → migrate → contract) for
+- Migrations are versioned and applied with the `packages/database` tooling:
+  `NNNN_name.js` modules exporting `up(db)`/`down(db)`, recorded in a
+  `schema_migrations` table and applied inside a single transaction.
+- Commands: `npm run db:migrate` (apply), `npm run db:down` (roll back last),
+  `npm run db:status`, `npm run db:migrate:create -- <name>`, `npm run db:seed`.
+- Breaking changes are applied in two steps (expand → migrate → contract) for
   zero-downtime where feasible.
 - Every migration ships with an idempotent rollback and documented data
   transformation when backfilling is required.
