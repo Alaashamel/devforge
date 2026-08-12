@@ -19,7 +19,13 @@
     "build": "npm run build -w apps/web",
     "validate": "node infrastructure/scripts/validate-repo.mjs",
     "test": "npm run test --workspaces --if-present",
-    "lint": "npm run lint --workspaces --if-present"
+    "lint": "npm run lint --workspaces --if-present",
+    "db:migrate": "npm run migrate -w packages/database",
+    "db:up": "npm run migrate -w packages/database",
+    "db:down": "npm run migrate:down -w packages/database",
+    "db:status": "npm run migrate:status -w packages/database",
+    "db:migrate:create": "npm run migrate:create -w packages/database",
+    "db:seed": "npm run seed -w packages/database"
   },
   "keywords": [
     "developer-platform",

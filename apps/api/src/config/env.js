@@ -8,7 +8,7 @@ const envSchema = z.object({
   DATABASE_URL: z
     .string()
     .min(1)
-    .default('postgres://devforge:devforge@localhost:5432/devforge'),
+    .default('postgres://devforge:devforge@localhost:5433/devforge'),
   CORS_ORIGINS: z.string().min(1).default('http://localhost:5173'),
 });
 

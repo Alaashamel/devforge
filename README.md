@@ -118,8 +118,8 @@ npm run dev
 - **Web:** http://localhost:5173
 
 The readiness check reports a 503 "degraded" status when PostgreSQL is
-unavailable. Start the dev database with `docker compose up -d db` to see a
-fully healthy API.
+unavailable. Start the dev database with `docker compose up -d postgres` to see
+a fully healthy API.
 
 ## Development commands
 
@@ -127,6 +127,10 @@ fully healthy API.
 npm run dev         # API (:4000) and web (:5173) concurrently
 npm run dev:api     # API only
 npm run dev:web     # Web only
+npm run db:migrate  # Apply database migrations (docker compose up -d postgres first)
+npm run db:seed     # Idempotent local seed data
+npm run db:down     # Roll back the last migration
+npm run db:status   # Show applied/pending migrations
 npm run lint        # ESLint across all workspaces
 npm test            # Vitest across all workspaces
 npm run build       # Production web build
