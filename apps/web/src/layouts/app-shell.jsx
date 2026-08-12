@@ -1,5 +1,6 @@
-import { NavLink, Outlet } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useUiStore } from '../stores/ui.js';
+import { useAuthStore } from '../stores/auth.js';
 
 const primaryNav = [{ to: '/', label: 'Dashboard', end: true }];
 
@@ -12,8 +13,16 @@ const upcomingNav = [
 ];
 
 export function AppShell() {
+  const navigate = useNavigate();
   const theme = useUiStore((s) => s.theme);
   const toggleTheme = useUiStore((s) => s.toggleTheme);
+  const user = useAuthStore((s) => s.user);
+  const logout = useAuthStore((s) => s.logout);
+
+  async function onLogout() {
+    await logout();
+    navigate('/login', { replace: true });
+  }
 
   return (
     <div className="flex min-h-screen bg-canvas text-ink">
@@ -64,13 +73,25 @@ export function AppShell() {
       <div className="flex min-w-0 flex-1 flex-col">
         <header className="flex h-14 items-center justify-between border-b border-line px-6">
           <span className="font-mono text-xs text-muted">~/workspace</span>
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="rounded-md border border-line px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-ink"
-          >
-            {theme === 'dark' ? 'Light' : 'Dark'}
-          </button>
+          <div className="flex items-center gap-3">
+            {user ? <span className="text-xs text-muted">{user.name}</span> : null}
+            {user ? (
+              <button
+                type="button"
+                onClick={onLogout}
+                className="rounded-md border border-line px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-ink"
+              >
+                Sign out
+              </button>
+            ) : null}
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="rounded-md border border-line px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-ink"
+            >
+              {theme === 'dark' ? 'Light' : 'Dark'}
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto p-6">
