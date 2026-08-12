@@ -67,11 +67,11 @@ needed) · 🧩 = small enough for a first-time contributor.
 | Labels and task labeling | feature | ✅ done 🧩 — replacement API + label chips in UI |
 | Comments on tasks | feature | ✅ done |
 | Milestones | feature | ✅ done — statuses + task counts |
-| Kanban board (move + persist order) | feature | ✅ done — board + quick-add landed; drag-persist follow-up |
-| Roadmap view | feature | follow-up |
+| Kanban board (move + persist order) | feature | ✅ done — board + quick-add + drag-to-move persisting position |
+| Roadmap view | feature | ✅ done — tasks grouped by milestone + backlog |
 | Filtering, search, sorting, pagination for tasks | feature | ✅ done |
 | Task activity history | feature | ✅ done — actor-scoped audit ledger |
-| Task dependencies with cycle detection | feature | add/list/remove landed; cycle detection follow-up |
+| Task dependencies with cycle detection | feature | ✅ done — add/list/remove + cycle rejection |
 
 ## Phase 5 — GitHub
 

@@ -64,12 +64,13 @@ Deliverables:
 ## Phase 4 — Project Management (current)
 
 - [x] Projects, tasks, issues, labels and comments with full validation.
-- [x] Milestones and a kanban board (status columns, quick-add).
+- [x] Milestones and a kanban board (status columns, quick-add, drag-to-move
+      persisting `position`).
+- [x] Roadmap view grouping tasks by milestone (plus a backlog).
 - [x] Filtering, search, sorting and pagination.
 - [x] Activity history and audit events.
-- [x] Task dependencies (add/list/remove, self/foreign-project rejected).
-- [ ] Kanban drag-to-move persisting `position`, roadmap view, and
-      dependency cycle detection (follow-up work).
+- [x] Task dependencies (add/list/remove, self/foreign-project and
+      cycle-producing dependencies rejected).
 
 ## Phase 5 — GitHub
 

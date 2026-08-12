@@ -137,7 +137,9 @@ Added:
   `comment`, `dependency_added`, …) written in the same transaction as the
   change.
 - Task dependencies (`…/dependencies`): list (`dependsOn`/`dependedOnBy`),
-  add and remove, rejecting self/foreign-project dependencies (`409`).
+  add and remove, rejecting self/foreign-project dependencies and any
+  dependency that would close a cycle (`409`, graph traversal over the
+  project's edges).
 - RBAC wired across the modules: `projects.create`, `projects.manage`,
   `projects.delete`, `tasks.manage` and `project.view` enforce the composed
   org/project role (more permissive wins).
@@ -149,6 +151,13 @@ Added:
 - Web API client methods for all of the above plus 6 new client tests;
   `listOrganizations`/`listProjects`/… support nested paths, query-string
   building and 204 handling.
+- Kanban drag-to-move: tasks can be dropped on a column (append) or before a
+  specific card (midpoint `position` between neighbors), persisted via
+  `PATCH …/tasks/:taskId` with an optimistic board update.
+- Roadmap view: a Board/Roadmap toggle on the project page grouping tasks by
+  milestone (ordered by status then due date) with a backlog bucket.
+- Pure board/roadmap helpers (`lib/board.js`, `lib/roadmap.js`) with 7 unit
+  tests.
 - Seed data upgraded to RFC-4122 v4-compatible deterministic UUIDs so seeded
   users/orgs pass `uuid` validation in request bodies.
 
@@ -160,4 +169,4 @@ Changed:
   `{id, name, color}` instead of parallel distinct arrays (NULL-safe).
 - pg `date` columns are mapped back to `YYYY-MM-DD` strings in responses so
   dates are timezone-independent.
-- Test counts: 98 API tests (9 files), 23 web tests, 15 database tests.
+- Test counts: 100 API tests (9 files), 30 web tests, 15 database tests.
