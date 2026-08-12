@@ -9,6 +9,9 @@ import { Register } from './pages/register.jsx';
 import { VerifyEmail } from './pages/verify-email.jsx';
 import { ForgotPassword } from './pages/forgot-password.jsx';
 import { ResetPassword } from './pages/reset-password.jsx';
+import { Projects } from './pages/projects.jsx';
+import { ProjectDetail } from './pages/project-detail.jsx';
+import { TaskDetail } from './pages/task-detail.jsx';
 
 export function App() {
   return (
@@ -28,6 +31,9 @@ export function App() {
           }
         >
           <Route index element={<Dashboard />} />
+          <Route path="projects" element={<Projects />} />
+          <Route path="projects/:projectId" element={<ProjectDetail />} />
+          <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

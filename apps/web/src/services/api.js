@@ -2,6 +2,16 @@ const DEFAULT_API_URL = 'http://localhost:4000/api/v1';
 
 export const API_URL = import.meta.env.VITE_API_URL || DEFAULT_API_URL;
 
+function toQuery(params = {}) {
+  const search = new URLSearchParams();
+  for (const [key, value] of Object.entries(params)) {
+    if (value === undefined || value === null || value === '') continue;
+    search.set(key, value);
+  }
+  const query = search.toString();
+  return query ? `?${query}` : '';
+}
+
 export class ApiError extends Error {
   constructor(message, { status, code, details, requestId } = {}) {
     super(message);
@@ -71,4 +81,121 @@ export const api = {
   resetPassword: (payload) =>
     request('/auth/reset-password', { method: 'POST', body: payload, authRetry: false }),
   me: () => request('/auth/me'),
+
+  listOrganizations: () => request('/organizations'),
+
+  listProjects: (orgId, params = {}) => request(`/organizations/${orgId}/projects${toQuery(params)}`),
+  getProject: (orgId, projectId) => request(`/organizations/${orgId}/projects/${projectId}`),
+  createProject: (orgId, payload) =>
+    request(`/organizations/${orgId}/projects`, { method: 'POST', body: payload }),
+  updateProject: (orgId, projectId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}`, { method: 'PATCH', body: payload }),
+  deleteProject: (orgId, projectId) =>
+    request(`/organizations/${orgId}/projects/${projectId}`, { method: 'DELETE', acceptStatus: [204] }),
+  listProjectMembers: (orgId, projectId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/members`),
+  setProjectMember: (orgId, projectId, userId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/members/${userId}`, {
+      method: 'PUT',
+      body: payload,
+    }),
+  removeProjectMember: (orgId, projectId, userId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/members/${userId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  listMilestones: (orgId, projectId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/milestones`),
+  createMilestone: (orgId, projectId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/milestones`, {
+      method: 'POST',
+      body: payload,
+    }),
+  updateMilestone: (orgId, projectId, milestoneId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/milestones/${milestoneId}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+  deleteMilestone: (orgId, projectId, milestoneId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/milestones/${milestoneId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  listLabels: (orgId, projectId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/labels`),
+  createLabel: (orgId, projectId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/labels`, {
+      method: 'POST',
+      body: payload,
+    }),
+  updateLabel: (orgId, projectId, labelId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/labels/${labelId}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+  deleteLabel: (orgId, projectId, labelId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/labels/${labelId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  listTasks: (orgId, projectId, params = {}) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks${toQuery(params)}`),
+  getTask: (orgId, projectId, taskId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}`),
+  createTask: (orgId, projectId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks`, {
+      method: 'POST',
+      body: payload,
+    }),
+  updateTask: (orgId, projectId, taskId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+  deleteTask: (orgId, projectId, taskId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  listTaskComments: (orgId, projectId, taskId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/comments`),
+  addTaskComment: (orgId, projectId, taskId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/comments`, {
+      method: 'POST',
+      body: payload,
+    }),
+  updateTaskComment: (orgId, projectId, taskId, commentId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, {
+      method: 'PATCH',
+      body: payload,
+    }),
+  deleteTaskComment: (orgId, projectId, taskId, commentId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/comments/${commentId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  setTaskLabels: (orgId, projectId, taskId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/labels`, {
+      method: 'PUT',
+      body: payload,
+    }),
+  listTaskActivity: (orgId, projectId, taskId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/activity`),
+  listDependencies: (orgId, projectId, taskId) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies`),
+  addDependency: (orgId, projectId, taskId, payload) =>
+    request(`/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies`, {
+      method: 'POST',
+      body: payload,
+    }),
+  removeDependency: (orgId, projectId, taskId, dependsOnId) =>
+    request(
+      `/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies/${dependsOnId}`,
+      { method: 'DELETE', acceptStatus: [204] },
+    ),
 };

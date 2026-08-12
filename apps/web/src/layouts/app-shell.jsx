@@ -1,11 +1,17 @@
+import { useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
+import { api } from '../services/api.js';
 import { useUiStore } from '../stores/ui.js';
 import { useAuthStore } from '../stores/auth.js';
+import { useWorkspaceStore } from '../stores/workspace.js';
 
-const primaryNav = [{ to: '/', label: 'Dashboard', end: true }];
+const primaryNav = [
+  { to: '/', label: 'Dashboard', end: true },
+  { to: '/projects', label: 'Projects' },
+];
 
 const upcomingNav = [
-  { label: 'Projects', phase: 'Phase 4' },
   { label: 'Repositories', phase: 'Phase 5' },
   { label: 'Analytics', phase: 'Phase 6' },
   { label: 'AI', phase: 'Phase 8–9' },
@@ -18,6 +24,16 @@ export function AppShell() {
   const toggleTheme = useUiStore((s) => s.toggleTheme);
   const user = useAuthStore((s) => s.user);
   const logout = useAuthStore((s) => s.logout);
+  const orgId = useWorkspaceStore((s) => s.orgId);
+  const selectOrg = useWorkspaceStore((s) => s.selectOrg);
+
+  const orgsQuery = useQuery({ queryKey: ['organizations'], queryFn: api.listOrganizations });
+
+  useEffect(() => {
+    if (!orgId && orgsQuery.data?.length > 0) {
+      selectOrg(orgsQuery.data[0].id);
+    }
+  }, [orgId, orgsQuery.data, selectOrg]);
 
   async function onLogout() {
     await logout();
@@ -71,9 +87,23 @@ export function AppShell() {
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-14 items-center justify-between border-b border-line px-6">
+        <header className="flex h-14 items-center justify-between gap-4 border-b border-line px-6">
           <span className="font-mono text-xs text-muted">~/workspace</span>
           <div className="flex items-center gap-3">
+            {orgsQuery.data?.length > 0 ? (
+              <select
+                value={orgId ?? ''}
+                onChange={(e) => selectOrg(e.target.value)}
+                className="rounded-md border border-line bg-canvas px-2 py-1.5 text-xs text-ink focus:border-accent focus:outline-none"
+                aria-label="Organization"
+              >
+                {orgsQuery.data.map((org) => (
+                  <option key={org.id} value={org.id}>
+                    {org.name}
+                  </option>
+                ))}
+              </select>
+            ) : null}
             {user ? <span className="text-xs text-muted">{user.name}</span> : null}
             {user ? (
               <button
