@@ -140,4 +140,88 @@ describe('api client', () => {
     });
     expect(refreshHandler).not.toHaveBeenCalled();
   });
+
+  it('builds org-scoped nested URLs for projects', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { projects: [], meta: {} } }),
+    });
+
+    await api.listProjects('org-1', { pageSize: 100 });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/projects?pageSize=100');
+  });
+
+  it('serializes query params and skips empty values', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { tasks: [], meta: {} } }),
+    });
+
+    await api.listTasks('org-1', 'proj-1', { status: 'todo', q: 'login', sort: '-priority', pageSize: 50, label: undefined });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/projects/proj-1/tasks?status=todo&q=login&sort=-priority&pageSize=50',
+    );
+  });
+
+  it('POSTs a createTask body to the nested path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ data: { id: 't-1', title: 'Ship it' } }),
+    });
+
+    await api.createTask('org-1', 'proj-1', { title: 'Ship it', priority: 'high' });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/projects/proj-1/tasks');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({ title: 'Ship it', priority: 'high' });
+  });
+
+  it('sends label replacement via PUT to the task labels path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { labelIds: ['l-1'] } }),
+    });
+
+    await api.setTaskLabels('org-1', 'proj-1', 't-1', { labelIds: ['l-1'] });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/projects/proj-1/tasks/t-1/labels');
+    expect(options.method).toBe('PUT');
+    expect(JSON.parse(options.body)).toEqual({ labelIds: ['l-1'] });
+  });
+
+  it('accepts a 204 response for DELETE endpoints', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => null,
+    });
+
+    await expect(api.deleteProject('org-1', 'proj-1')).resolves.toBeUndefined();
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/projects/proj-1');
+    expect(options.method).toBe('DELETE');
+  });
+
+  it('lists task dependencies from the nested path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { dependsOn: [], dependedOnBy: [] } }),
+    });
+
+    await expect(api.listDependencies('org-1', 'proj-1', 't-1')).resolves.toEqual({
+      dependsOn: [],
+      dependedOnBy: [],
+    });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/projects/proj-1/tasks/t-1/dependencies',
+    );
+  });
 });

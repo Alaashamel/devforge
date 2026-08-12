@@ -62,16 +62,16 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Project CRUD | feature | |
-| Task/issue CRUD with statuses, priorities, assignees | feature | |
-| Labels and task labeling | feature | 🧩 |
-| Comments on tasks | feature | |
-| Milestones | feature | |
-| Kanban board (move + persist order) | feature | |
-| Roadmap view | feature | |
-| Filtering, search, sorting, pagination for tasks | feature | |
-| Task activity history | feature | |
-| Task dependencies with cycle detection | feature | |
+| Project CRUD | feature | ✅ done — orgs, projects, members, soft archive |
+| Task/issue CRUD with statuses, priorities, assignees | feature | ✅ done — + types, parents, due dates, estimates |
+| Labels and task labeling | feature | ✅ done 🧩 — replacement API + label chips in UI |
+| Comments on tasks | feature | ✅ done |
+| Milestones | feature | ✅ done — statuses + task counts |
+| Kanban board (move + persist order) | feature | ✅ done — board + quick-add landed; drag-persist follow-up |
+| Roadmap view | feature | follow-up |
+| Filtering, search, sorting, pagination for tasks | feature | ✅ done |
+| Task activity history | feature | ✅ done — actor-scoped audit ledger |
+| Task dependencies with cycle detection | feature | add/list/remove landed; cycle detection follow-up |
 
 ## Phase 5 — GitHub
 

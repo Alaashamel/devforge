@@ -61,12 +61,15 @@ Deliverables:
 - [ ] Email provider wiring for production deliveries (dev links are
       returned/logged locally).
 
-## Phase 4 — Project Management
+## Phase 4 — Project Management (current)
 
-- Projects, tasks, issues, labels and comments with full validation.
-- Milestones, roadmaps and kanban boards.
-- Filtering, search, sorting and pagination.
-- Activity history and audit events.
+- [x] Projects, tasks, issues, labels and comments with full validation.
+- [x] Milestones and a kanban board (status columns, quick-add).
+- [x] Filtering, search, sorting and pagination.
+- [x] Activity history and audit events.
+- [x] Task dependencies (add/list/remove, self/foreign-project rejected).
+- [ ] Kanban drag-to-move persisting `position`, roadmap view, and
+      dependency cycle detection (follow-up work).
 
 ## Phase 5 — GitHub
 

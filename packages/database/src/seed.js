@@ -1,10 +1,26 @@
 // Idempotent local-development seed. Safe to run repeatedly (upserts via
 // ON CONFLICT DO NOTHING with fixed UUIDs). Refuses to run in production.
 import { Pool } from 'pg';
+import { hash } from '@node-rs/argon2';
 import { env } from './env.js';
 
-const U = '00000000-0000-0000-0000-0000000000';
+// Deterministic RFC-4122 v4-compatible ids (version nibble 4, variant 8) so
+// seeded rows stay referenceable from code/tests while passing uuid validation.
+const U = '00000000-0000-4000-8000-0000000000';
 const user = (n) => `${U}${String(n).padStart(2, '0')}`;
+
+// Documented dev credentials so seeded accounts are actually usable. Fast
+// parameters are fine here: verification re-reads costs from the hash.
+export const SEED_PASSWORD = 'DevForgeDev123!';
+
+async function ensurePasswordHash(db, userEmail) {
+  const { rows } = await db.query('SELECT password_hash FROM users WHERE email = $1', [userEmail]);
+  const current = rows[0]?.password_hash ?? '';
+  if (current.startsWith('$argon')) {
+    return current;
+  }
+  return hash(SEED_PASSWORD, { memoryCost: 8192, timeCost: 1, parallelism: 1 });
+}
 
 const seed = async (db) => {
   const users = [
@@ -14,7 +30,6 @@ const seed = async (db) => {
       name: 'Alaa Shamel',
       status: 'active',
       email_verified_at: new Date(),
-      password_hash: 'seed-only-placeholder-hash',
     },
     {
       id: user(2),
@@ -22,7 +37,6 @@ const seed = async (db) => {
       name: 'Jordan Rivera',
       status: 'active',
       email_verified_at: new Date(),
-      password_hash: 'seed-only-placeholder-hash',
     },
     {
       id: user(3),
@@ -30,15 +44,15 @@ const seed = async (db) => {
       name: 'Sam Okafor',
       status: 'active',
       email_verified_at: null,
-      password_hash: 'seed-only-placeholder-hash',
     },
   ];
   for (const u of users) {
+    const passwordHash = await ensurePasswordHash(db, u.email);
     await db.query(
       `INSERT INTO users (id, email, name, password_hash, email_verified_at, status)
        VALUES ($1, $2, $3, $4, $5, $6)
-       ON CONFLICT (email) DO NOTHING`,
-      [u.id, u.email, u.name, u.password_hash, u.email_verified_at, u.status],
+       ON CONFLICT (email) DO UPDATE SET password_hash = EXCLUDED.password_hash`,
+      [u.id, u.email, u.name, passwordHash, u.email_verified_at, u.status],
     );
   }
 
