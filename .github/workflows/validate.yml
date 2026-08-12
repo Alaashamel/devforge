@@ -12,6 +12,8 @@ jobs:
     env:
       # Shared by the packages/database tests; the API test setup overrides it.
       DATABASE_URL: postgres://devforge:devforge@localhost:5432/devforge_test
+      # Used by the auth integration tests (defaults to localhost:5433 locally).
+      AUTH_TEST_DATABASE_URL: postgres://devforge:devforge@localhost:5432/devforge_test
     services:
       postgres:
         image: postgres:16-alpine

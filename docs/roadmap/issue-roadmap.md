@@ -49,14 +49,14 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Registration + email verification | feature | |
-| Login/logout + JWT issuance | feature | |
-| Refresh token rotation with reuse detection | security | 🔒 |
-| Password reset flow | feature | |
-| RBAC permission matrix middleware | feature | |
-| Auth rate limiting | security | 🔒 |
-| Auth integration tests | testing | Happy + failure paths |
-| Argon2 password hashing service | security | 🔒 🧩 |
+| Registration + email verification | feature | ✅ done |
+| Login/logout + JWT issuance | feature | ✅ done |
+| Refresh token rotation with reuse detection | security | ✅ done — replayed token revokes the family 🔒 |
+| Password reset flow | feature | ✅ done |
+| RBAC permission matrix middleware | feature | ✅ done — requireAuth + authorize(permission) |
+| Auth rate limiting | security | ✅ done — per-route sliding window 🔒 |
+| Auth integration tests | testing | ✅ done — 53 new API tests incl. happy + failure paths |
+| Argon2 password hashing service | security | ✅ done — Argon2id via @node-rs/argon2 🔒 🧩 |
 
 ## Phase 4 — Project Management
 
