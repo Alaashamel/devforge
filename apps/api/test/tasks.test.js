@@ -391,4 +391,49 @@ describe('task dependencies', () => {
       .send({ dependsOnId: otherTask.body.data.id });
     expect(foreign.status).toBe(409);
   });
+
+  it('rejects a dependency that would close a cycle', async () => {
+    const a = await createTask(app, owner.accessToken, org.id, project.id, { title: 'A' });
+    const b = await createTask(app, owner.accessToken, org.id, project.id, { title: 'B' });
+
+    const first = await request(app)
+      .post(`/api/v1/organizations/${org.id}/projects/${project.id}/tasks/${a.body.data.id}/dependencies`)
+      .set(auth(owner.accessToken))
+      .send({ dependsOnId: b.body.data.id });
+    expect(first.status).toBe(201);
+
+    const cycle = await request(app)
+      .post(`/api/v1/organizations/${org.id}/projects/${project.id}/tasks/${b.body.data.id}/dependencies`)
+      .set(auth(owner.accessToken))
+      .send({ dependsOnId: a.body.data.id });
+    expect(cycle.status).toBe(409);
+
+    const list = await request(app)
+      .get(`/api/v1/organizations/${org.id}/projects/${project.id}/tasks/${b.body.data.id}/dependencies`)
+      .set(auth(owner.accessToken));
+    expect(list.body.data.dependsOn).toHaveLength(0);
+  });
+
+  it('rejects a transitive dependency cycle', async () => {
+    const a = await createTask(app, owner.accessToken, org.id, project.id, { title: 'A' });
+    const b = await createTask(app, owner.accessToken, org.id, project.id, { title: 'B' });
+    const c = await createTask(app, owner.accessToken, org.id, project.id, { title: 'C' });
+
+    for (const [task, dependsOn] of [
+      [a, b],
+      [b, c],
+    ]) {
+      const res = await request(app)
+        .post(`/api/v1/organizations/${org.id}/projects/${project.id}/tasks/${task.body.data.id}/dependencies`)
+        .set(auth(owner.accessToken))
+        .send({ dependsOnId: dependsOn.body.data.id });
+      expect(res.status).toBe(201);
+    }
+
+    const cycle = await request(app)
+      .post(`/api/v1/organizations/${org.id}/projects/${project.id}/tasks/${c.body.data.id}/dependencies`)
+      .set(auth(owner.accessToken))
+      .send({ dependsOnId: a.body.data.id });
+    expect(cycle.status).toBe(409);
+  });
 });
