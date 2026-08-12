@@ -520,6 +520,38 @@ export function createTaskService({ pool, resolveRole }) {
     };
   }
 
+  async function assertNoCycle(projectId, taskId, dependsOnId) {
+    const { rows } = await pool.query(
+      `SELECT d.task_id, d.depends_on_id
+         FROM task_dependencies d
+         JOIN tasks t ON t.id = d.task_id AND t.deleted_at IS NULL
+        WHERE t.project_id = $1`,
+      [projectId],
+    );
+    const graph = new Map();
+    for (const row of rows) {
+      if (!graph.has(row.task_id)) {
+        graph.set(row.task_id, []);
+      }
+      graph.get(row.task_id).push(row.depends_on_id);
+    }
+    const queue = [dependsOnId];
+    const seen = new Set();
+    while (queue.length > 0) {
+      const current = queue.shift();
+      if (current === taskId) {
+        throw conflict('Adding this dependency would create a cycle');
+      }
+      if (seen.has(current)) {
+        continue;
+      }
+      seen.add(current);
+      for (const next of graph.get(current) ?? []) {
+        queue.push(next);
+      }
+    }
+  }
+
   async function createDependency({ projectId, taskId, userId, dependsOnId }) {
     await getTaskOrThrow(projectId, taskId);
     if (dependsOnId === taskId) {
@@ -539,6 +571,7 @@ export function createTaskService({ pool, resolveRole }) {
     if (existingRows.length > 0) {
       return { data: { taskId, dependsOnId } };
     }
+    await assertNoCycle(projectId, taskId, dependsOnId);
     const client = await pool.connect();
     try {
       await client.query('BEGIN');
