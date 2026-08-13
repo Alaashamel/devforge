@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api.js';
 import { useWorkspaceStore } from '../stores/workspace.js';
 import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '../components/form.jsx';
+import { useRealtime } from '../hooks/use-realtime.js';
 
 const priorityTone = {
   low: 'text-muted',
@@ -61,6 +62,21 @@ export function TaskDetail() {
     queryKey: ['organizations', orgId, 'projects', projectId, 'tasks', taskId, 'dependencies'],
     queryFn: () => api.listDependencies(orgId, projectId, taskId),
     enabled: Boolean(orgId),
+  });
+
+  useRealtime({
+    rooms: projectId && taskId ? [`task:${taskId}`, `project:${projectId}`] : [],
+    on: {
+      'task:updated': () => {
+        queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks'] });
+        queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks', taskId] });
+        queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks', taskId, 'activity'] });
+      },
+      'task:comment': () => {
+        queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks', taskId, 'comments'] });
+        queryClient.invalidateQueries({ queryKey: ['organizations', orgId, 'projects', projectId, 'tasks', taskId, 'activity'] });
+      },
+    },
   });
 
   const [error, setError] = useState(null);

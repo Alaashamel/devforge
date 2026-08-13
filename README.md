@@ -8,13 +8,14 @@ DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 6 — Analytics.** The web app and API run locally (`npm run dev`)
+> **Status: Phase 7 — Real-Time.** The web app and API run locally (`npm run dev`)
 > with authentication & RBAC, project management (kanban + roadmaps), GitHub
 > OAuth with encrypted tokens, repository import/sync, webhooks with signature
-> verification, and an analytics dashboard (velocity, health, contributors,
-> developers and repository activity). **209 passing tests** (152 API, 42 web,
-> 15 database), shared linting and a CI quality gate. Phase 7 (real-time) is
-> next.
+> verification, an analytics dashboard (velocity, health, contributors,
+> developers and repository activity), and real-time collaboration —
+> notifications, presence, typing indicators, team chat and live task updates
+> over Socket.io. **228 passing tests** (163 API, 50 web, 15 database), shared
+> linting and a CI quality gate. Phase 8 (AI foundation) is next.
 
 ---
 

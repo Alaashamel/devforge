@@ -5,6 +5,7 @@ import { logger } from './config/logger.js';
 
 const app = createApp();
 const server = createServer(app);
+app.locals.realtime.attach({ server });
 
 let shuttingDown = false;
 
@@ -20,6 +21,7 @@ function shutdown(signal) {
   forceExit.unref();
 
   server.close(() => {
+    app.locals.realtime.close();
     logger.info('server closed');
     process.exit(0);
   });

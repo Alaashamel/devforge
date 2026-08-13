@@ -20,11 +20,13 @@
     "jose": "^6.2.8",
     "pg": "^8.23.0",
     "pino": "^10.3.1",
+    "socket.io": "^4.8.3",
     "zod": "^4.4.3"
   },
   "devDependencies": {
     "@devforge/database": "*",
     "eslint": "^9.39.5",
+    "socket.io-client": "^4.8.3",
     "supertest": "^7.2.2",
     "vitest": "^4.1.10"
   }

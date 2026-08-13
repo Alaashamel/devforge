@@ -23,5 +23,29 @@ export function createOrganizationService({ pool }) {
     return { data, meta: { page: 1, pageSize: data.length, total: data.length, totalPages: data.length > 0 ? 1 : 0 } };
   }
 
-  return { listMyOrgs };
+  async function listMembers({ orgId }) {
+    const { rows } = await pool.query(
+      `SELECT u.id, u.name, u.email, u.avatar_url, om.role,
+              CASE WHEN o.owner_id = u.id THEN 'owner' ELSE om.role END AS effective_role,
+              om.joined_at
+         FROM organization_members om
+         JOIN users u ON u.id = om.user_id
+         JOIN organizations o ON o.id = om.organization_id
+        WHERE om.organization_id = $1 AND om.status = 'active'
+        ORDER BY u.name ASC`,
+      [orgId],
+    );
+    return {
+      data: rows.map((r) => ({
+        id: r.id,
+        name: r.name,
+        email: r.email,
+        avatarUrl: r.avatar_url ?? null,
+        role: r.effective_role,
+        joinedAt: r.joined_at,
+      })),
+    };
+  }
+
+  return { listMyOrgs, listMembers };
 }

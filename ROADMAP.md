@@ -97,9 +97,16 @@ Deliverables:
 
 ## Phase 7 — Real-Time
 
-- Notifications, presence and typing indicators.
-- Team chat.
-- Live task updates and activity feed.
+- [x] Socket.io hub with JWT handshake, server-authorized rooms and presence
+      tracking (see `docs/architecture/realtime-architecture.md`).
+- [x] Notifications: user inbox, unread badge, mark read, live push on task
+      assignment, updates and comments.
+- [x] Activity feed: live broadcast of task events per organization.
+- [x] Team chat: persisted messages, cursor pagination, typing indicators and
+      online presence.
+- [x] Live task updates: project and task detail views refresh in real time
+      (list, board, detail, comments, activity).
+- [x] Web integration tests for notifications, chat and live message delivery.
 
 ## Phase 8 — AI Foundation
 

@@ -250,3 +250,45 @@ Notes:
   Phase 7.
 - `developer_metrics.period` is a stripped `date` column; reads use
   `to_char` so periods are timezone-independent.
+
+### Phase 7 — Real-Time
+
+Added:
+
+- Socket.io hub (`apps/api/src/modules/realtime`): JWT handshake on connect
+  (reuses the `accessTokens` HS256 verifier), server-authorized rooms
+  (`user:{id}`, `org:{id}`, `project:{id}`, `task:{id}`, `chat:{orgId}`) with
+  DB-backed membership checks on `room:join`, presence tracking with a 90s TTL
+  sweep and throttled `presence:update` broadcasts, throttled `chat:typing`
+  (2s), `emitToUser`/`emitToRoom`/`getOnlineUserIds` helpers, and an
+  `attach({ server })` integration attached to the same HTTP server.
+- Notifications module (`/api/v1/notifications`): list, unread count, mark
+  read and mark-all-read, plus a `notify` helper that persists and pushes
+  `notification:new` to the target user's room. Task service now notifies the
+  assignee on assignment (and re-assignment) and the assignee + reporter on
+  comments.
+- Activity module (`/api/v1/organizations/:orgId/activity`): live feed listing
+  with `activity:new` broadcast to the org room.
+- Chat module (`/api/v1/organizations/:orgId/chat`): persisted
+  `chat_messages` (migration `0009_chat`, body 1–2000 chars, cursor
+  pagination) with `chat:message` broadcast to the `chat:{orgId}` room.
+- Tasks service events: post-commit `task:created`/`task:updated` (with
+  `changes` diff) to the `project:` room and `task:comment` to the `task:`
+  room; all broadcasts go through a `safeEmit` wrapper so a socket failure can
+  never fail an already-committed request.
+- Organizations module: `GET /:orgId/members` for presence UI.
+- Web socket client (`apps/web/src/services/socket.js`): connect/disconnect
+  that re-authenticates on token change, server-authorized `joinRoom`/`leaveRoom`
+  with ack, `emitEvent` and `onRealtime`.
+- Web notifications: unread badge + dropdown in the app shell (mark read on
+  click, mark all read, relative timestamps), a Zustand store fed live by
+  `notification:new`.
+- Web team chat (`/chat`): message history + live appends, dedup by id,
+  typing indicators, and an org-members sidebar with online/offline dots from
+  presence heartbeats.
+- Live task updates: project detail and task detail pages join realtime rooms
+  and invalidate their queries on `task:created`/`task:updated`/`task:comment`,
+  so lists, the board, details, comments and activity refresh without reloads.
+- Test counts: 163 API tests (14 files — 11 new realtime integration tests),
+  50 web tests (8 new), 15 database tests.
+

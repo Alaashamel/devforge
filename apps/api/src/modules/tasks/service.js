@@ -52,7 +52,25 @@ const TASK_SELECT = `
 
 const TASK_GROUP = 'GROUP BY t.id, u.name, u.email';
 
-export function createTaskService({ pool, resolveRole }) {
+export function createTaskService({ pool, resolveRole, realtime = null, notifications = null, activity = null }) {
+  // Post-commit side effects (socket broadcast, notifications, activity feed)
+  // must never fail the request itself, since the DB write already succeeded.
+  async function safeEmit(fn) {
+    try {
+      await fn();
+    } catch {
+      // intentionally swallowed
+    }
+  }
+
+  async function getProjectOrg(projectId) {
+    const { rows } = await pool.query(
+      'SELECT organization_id FROM projects WHERE id = $1',
+      [projectId],
+    );
+    return rows[0]?.organization_id ?? null;
+  }
+
   async function projectExists(projectId) {
     const { rows } = await pool.query(
       'SELECT 1 FROM projects WHERE id = $1 AND deleted_at IS NULL',
@@ -251,6 +269,37 @@ export function createTaskService({ pool, resolveRole }) {
       await logActivity(client, { taskId: task.id, actorId: userId, action: 'created', field: 'title', newValue: task.title });
       await client.query('COMMIT');
       const full = await getTaskRow(projectId, task.id);
+      await safeEmit(async () => {
+        realtime?.emitToRoom?.(`project:${projectId}`, 'task:created', {
+          task: {
+            id: task.id,
+            projectId,
+            title: full.title,
+            status: full.status,
+            priority: full.priority,
+            assigneeId: full.assignee_id ?? null,
+          },
+        });
+        const orgId = await getProjectOrg(projectId);
+        if (activity && orgId) {
+          await activity.record({
+            orgId,
+            actorId: userId,
+            type: 'task.created',
+            subjectType: 'task',
+            subjectId: task.id,
+            metadata: { title: full.title, status: full.status },
+          });
+        }
+        if (notifications && full.assignee_id && full.assignee_id !== userId) {
+          await notifications.notify({
+            userId: full.assignee_id,
+            type: 'task.assigned',
+            title: `You were assigned "${full.title}"`,
+            href: `/projects/${projectId}/tasks/${task.id}`,
+          });
+        }
+      });
       return { data: mapTask(full) };
     } catch (err) {
       await client.query('ROLLBACK');
@@ -325,6 +374,35 @@ export function createTaskService({ pool, resolveRole }) {
       }
       await client.query('COMMIT');
       const full = await getTaskRow(projectId, taskId);
+      await safeEmit(async () => {
+        realtime?.emitToRoom?.(`project:${projectId}`, 'task:updated', {
+          taskId,
+          projectId,
+          changes,
+        });
+        const orgId = await getProjectOrg(projectId);
+        if (activity && orgId) {
+          await activity.record({
+            orgId,
+            actorId: userId,
+            type: 'task.updated',
+            subjectType: 'task',
+            subjectId: taskId,
+            metadata: { changes },
+          });
+        }
+        if (notifications) {
+          const assigneeChange = changes.find((c) => c.field === 'assignee_id');
+          if (assigneeChange && assigneeChange.newValue && assigneeChange.newValue !== userId) {
+            await notifications.notify({
+              userId: assigneeChange.newValue,
+              type: 'task.assigned',
+              title: `You were assigned "${current.title}"`,
+              href: `/projects/${projectId}/tasks/${taskId}`,
+            });
+          }
+        }
+      });
       return { data: mapTask(full) };
     } catch (err) {
       await client.query('ROLLBACK');
@@ -393,7 +471,25 @@ export function createTaskService({ pool, resolveRole }) {
       await logActivity(client, { taskId, actorId: userId, action: 'comment', field: 'body' });
       await client.query('COMMIT');
       const { data } = await listComments({ projectId, taskId });
-      return { data: data.find((c) => c.id === rows[0].id) };
+      const comment = data.find((c) => c.id === rows[0].id);
+      const current = await getTaskRow(projectId, taskId);
+      await safeEmit(async () => {
+        realtime?.emitToRoom?.(`task:${taskId}`, 'task:comment', { comment });
+        if (notifications && current) {
+          const targets = new Set([current.assignee_id, current.reporter_id]);
+          for (const targetId of targets) {
+            if (targetId && targetId !== userId) {
+              await notifications.notify({
+                userId: targetId,
+                type: 'task.commented',
+                title: `New comment on "${current.title}"`,
+                href: `/projects/${projectId}/tasks/${taskId}`,
+              });
+            }
+          }
+        }
+      });
+      return { data: comment };
     } catch (err) {
       await client.query('ROLLBACK');
       throw err;
