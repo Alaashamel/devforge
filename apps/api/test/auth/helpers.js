@@ -45,7 +45,7 @@ export async function ensureTestDatabase() {
   }
 }
 
-export function createTestApp({ pool, mailer, limiter }) {
+export function createTestApp({ pool, mailer, limiter, github }) {
   const accessTokens = createAccessTokenService({ secret: 'a'.repeat(40), ttl: '15m' });
   const service = createAuthService({
     pool,
@@ -59,6 +59,6 @@ export function createTestApp({ pool, mailer, limiter }) {
     resolveRole: service.resolveEffectiveRole,
   });
   const authLimiter = limiter ?? createRateLimiter({ limits: AUTH_RATE_LIMITS });
-  const modules = buildDefaultModules({ pool, resolveRole: service.resolveEffectiveRole });
+  const modules = buildDefaultModules({ pool, resolveRole: service.resolveEffectiveRole, github });
   return createApp({ auth: { service, middleware, limiter: authLimiter }, modules });
 }
