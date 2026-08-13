@@ -43,7 +43,7 @@ needed) · 🧩 = small enough for a first-time contributor.
 | AI tables migration (analyses, conversations, messages, jobs) | feature | ✅ done |
 | Analytics migration (developer_metrics) | feature | ✅ done |
 | Seed script for local development | feature | ✅ done 🧩 |
-| Index review + query plan checks | performance | 7 baseline migrations + FK/hot-path indexes landed |
+| Index review + query plan checks | performance | 9 baseline migrations + FK/hot-path indexes landed |
 
 ## Phase 3 — Authentication
 
@@ -98,14 +98,14 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Socket.io namespace + JWT auth + rooms | feature | |
-| Redis adapter for horizontal scale | feature | |
-| Presence with heartbeats | feature | |
-| Persisted notifications + live push | feature | |
-| Typing indicators (throttled) | feature | 🧩 |
-| Team chat | feature | |
-| Live task updates + activity feed | feature | |
-| Reconnect + refetch strategy | feature | |
+| Socket.io hub + JWT auth + rooms | feature | ✅ done — server-authorized rooms (user/org/project/task/chat), 11 integration tests |
+| Redis adapter for horizontal scale | feature | deferred — in-process hub ships first; adapter documented for Phase 10 |
+| Presence with heartbeats | feature | ✅ done — 90s TTL sweep + `presence:update` broadcasts + sidebar dots |
+| Persisted notifications + live push | feature | ✅ done — inbox, unread badge, mark read/all, `notification:new` push |
+| Typing indicators (throttled) | feature | ✅ done 🧩 — 2s emit throttle + 3s visibility window |
+| Team chat | feature | ✅ done — `chat_messages` table (0009), cursor pagination, `chat:message` broadcast |
+| Live task updates + activity feed | feature | ✅ done — `task:created`/`task:updated`/`task:comment` + `activity:new` |
+| Reconnect + refetch strategy | feature | ✅ done — re-join rooms on connect + query invalidation on live events |
 
 ## Phase 8 — AI Foundation
 
@@ -172,7 +172,6 @@ Hand-picked small scopes for first-time contributors:
 - 🧩 Root dev script wiring (Phase 1)
 - 🧩 Seed script for local development (Phase 2)
 - 🧩 Labels and task labeling (Phase 4)
-- 🧩 Typing indicators (Phase 7)
 
 ---
 

@@ -18,7 +18,10 @@ apps/api/src/
 │   ├── projects/
 │   ├── github/
 │   ├── analytics/
-│   ├── realtime/
+│   ├── realtime/          # Socket.io hub: rooms, presence, typing
+│   ├── notifications/     # persisted inbox + live push
+│   ├── activity/          # org activity feed + live broadcast
+│   ├── chat/              # persisted team chat + live broadcast
 │   └── ai-gateway/
 ├── database/              # pool, migrations, seed
 ├── utils/                 # jwt, crypto, pagination, http
