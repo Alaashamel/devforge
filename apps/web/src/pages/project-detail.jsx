@@ -7,6 +7,7 @@ import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '.
 import { StatusPill } from '../components/status-pill.jsx';
 import { DEFAULT_COLUMNS, computeDrop } from '../lib/board.js';
 import { buildRoadmap } from '../lib/roadmap.js';
+import { useRealtime } from '../hooks/use-realtime.js';
 
 const priorityTone = {
   low: 'bg-muted',
@@ -90,6 +91,20 @@ export function ProjectDetail() {
     queryKey: ['organizations', orgId, 'projects', projectId, 'members'],
     queryFn: () => api.listProjectMembers(orgId, projectId),
     enabled: Boolean(orgId),
+  });
+
+  useRealtime({
+    rooms: projectId ? [`project:${projectId}`] : [],
+    on: {
+      'task:created': () => {
+        queryClient.invalidateQueries({ queryKey: taskKeys });
+        queryClient.invalidateQueries({ queryKey: projectKeys });
+      },
+      'task:updated': () => {
+        queryClient.invalidateQueries({ queryKey: taskKeys });
+        queryClient.invalidateQueries({ queryKey: projectKeys });
+      },
+    },
   });
 
   const [error, setError] = useState(null);
