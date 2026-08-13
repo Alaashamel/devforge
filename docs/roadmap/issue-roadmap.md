@@ -77,13 +77,13 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| GitHub OAuth connection flow | feature | |
-| Encrypted token storage (AES-GCM) | security | 🔒 |
-| Repository import + metadata sync | feature | |
-| Branches/commits/PRs/issues views | feature | |
-| Webhook registration + signature verification | feature | 🔒 |
-| Rate limit handling with backoff/retry | performance | |
-| Token refresh on expiry | feature | |
+| GitHub OAuth connection flow | feature | ✅ done — HMAC-signed state, callback redirects |
+| Encrypted token storage (AES-GCM) | security | ✅ done — v1 envelope, app-level expiry → 409 🔒 |
+| Repository import + metadata sync | feature | ✅ done — PRs upserted during sync |
+| Branches/commits/PRs/issues views | feature | ✅ done — live views + DB-backed PR list |
+| Webhook registration + signature verification | feature | ✅ done — sha256 HMAC, raw-body route 🔒 |
+| Rate limit handling with backoff/retry | performance | ✅ done — 5xx retry + rate-limit wait |
+| Token refresh on expiry | feature | ✅ done — GitHub 401 marks connection expired; reconnect via OAuth |
 
 ## Phase 6 — Analytics
 

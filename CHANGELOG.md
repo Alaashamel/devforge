@@ -170,3 +170,42 @@ Changed:
 - pg `date` columns are mapped back to `YYYY-MM-DD` strings in responses so
   dates are timezone-independent.
 - Test counts: 100 API tests (9 files), 30 web tests, 15 database tests.
+
+### Phase 5 — GitHub
+
+Added:
+
+- `apps/api` GitHub module (`/api/v1/github`): OAuth connect/disconnect flow —
+  `POST /oauth/begin` issues a URL with an HMAC-signed state (10-min TTL),
+  `GET /oauth/callback` exchanges the code for a token and 302-redirects back
+  to the web app (`?github=connected|error`), `GET /connection` reports the
+  linked GitHub account, `POST /disconnect` clears it.
+- Encrypted token storage: access/refresh tokens are AES-256-GCM encrypted
+  (`v1:iv:tag:ciphertext` envelope, fresh IV per write) with a
+  SHA-256-derived key; token expiry is tracked and a GitHub 401 marks the
+  connection expired (`409 GITHUB_TOKEN_EXPIRED`) so clients can reconnect.
+- GitHub REST client (`createGithubClient`) with exponential backoff on 5xx,
+  rate-limit handling (waits on `x-ratelimit-reset`/`retry-after`, capped 60s)
+  and short-circuiting on 401; user/repo/branch/commit/PR/issue/webhook
+  methods.
+- Repository module (`/api/v1/organizations/:orgId/repositories`): import a
+  repo by `owner/name` (transactional upsert + pull-request cache), list/get,
+  `POST …/:repoId/sync` to refresh metadata and PRs, and delete. Branches,
+  commits and issues are live views against the GitHub API; pull requests are
+  served from the local `pull_requests` table with filtering/pagination.
+- Webhook module (`…/:repoId/webhooks`): create (random 32-byte secret,
+  URL derived from `API_BASE_URL`) and delete (tolerates a GitHub 404).
+  Inbound `POST /api/v1/webhooks/github/:repoId` reads the raw body (registered
+  before the JSON parser), verifies `x-hub-signature-256` via `timingSafeEqual`,
+  acks `ping` and re-syncs the repo + PRs on `push`/`pull_request`.
+- RBAC: repository reads need `project.view`; import/sync/delete/webhook
+  writes need `repos.manage` (owner/admin/maintainer).
+- Migration `0008_github_unique_connection` (unique index on
+  `github_connections(user_id)`) enabling the per-user upsert.
+- Web UI: a Repositories page (Connect GitHub via OAuth redirect, import
+  `owner/repo`, card grid with sync/remove, `?github=connected|error` notice)
+  and a repository detail page with overview plus pull-requests, branches,
+  commits (branch selector), issues and webhooks tabs; "Repositories" is now
+  a primary nav item.
+- Web API client methods for the GitHub endpoints plus 7 new client tests.
+- Test counts: 136 API tests (12 files), 37 web tests, 15 database tests.
