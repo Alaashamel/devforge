@@ -25,6 +25,7 @@ const MIGRATION_NAMES = [
   '0006_ai',
   '0007_analytics',
   '0008_github_unique_connection',
+  '0009_chat',
 ];
 
 const EXPECTED_TABLES = [
@@ -57,6 +58,7 @@ const EXPECTED_TABLES = [
   'ai_messages',
   'ai_jobs',
   'developer_metrics',
+  'chat_messages',
 ];
 
 async function tableNames() {
@@ -140,20 +142,20 @@ describe('migration runner', () => {
 
   it('rolls back the last migration and re-applies it', async () => {
     const rolledBack = await migrateDown({ client, steps: 1 });
-    expect(rolledBack).toEqual(['0008_github_unique_connection']);
+    expect(rolledBack).toEqual(['0009_chat']);
 
     const { rows: idx } = await client.query(`
       SELECT 1 FROM pg_indexes
-      WHERE indexname = 'github_connections_user_id_unique_idx'
+      WHERE indexname = 'chat_messages_organization_id_created_at_idx'
     `);
     expect(idx).toHaveLength(0);
 
     const reapplied = await migrateUp({ client });
-    expect(reapplied).toEqual(['0008_github_unique_connection']);
+    expect(reapplied).toEqual(['0009_chat']);
 
     const { rows: idxAfter } = await client.query(`
       SELECT 1 FROM pg_indexes
-      WHERE indexname = 'github_connections_user_id_unique_idx'
+      WHERE indexname = 'chat_messages_organization_id_created_at_idx'
     `);
     expect(idxAfter).toHaveLength(1);
   });
@@ -204,10 +206,10 @@ export const down = async () => {};`,
 });
 
 describe('listMigrations helper', () => {
-  it('reports eight baseline migrations', () => {
+  it('reports nine baseline migrations', () => {
     const migrations = listMigrations();
-    expect(migrations).toHaveLength(8);
+    expect(migrations).toHaveLength(9);
     expect(migrations[0].name).toBe('0001_identity');
-    expect(migrations[7].name).toBe('0008_github_unique_connection');
+    expect(migrations[8].name).toBe('0009_chat');
   });
 });
