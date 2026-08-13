@@ -72,12 +72,12 @@ Deliverables:
 - [x] Task dependencies (add/list/remove, self/foreign-project and
       cycle-producing dependencies rejected).
 
-## Phase 5 — GitHub
+## Phase 5 — GitHub (current)
 
-- GitHub OAuth connection with encrypted token storage.
-- Repository import and metadata sync.
-- Branches, commits, pull requests and issues views.
-- Webhook registration with signature verification and retries.
+- [x] GitHub OAuth connection with encrypted token storage.
+- [x] Repository import and metadata sync.
+- [x] Branches, commits, pull requests and issues views.
+- [x] Webhook registration with signature verification and retries.
 
 ## Phase 6 — Analytics
 

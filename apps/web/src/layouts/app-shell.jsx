@@ -9,10 +9,10 @@ import { useWorkspaceStore } from '../stores/workspace.js';
 const primaryNav = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/projects', label: 'Projects' },
+  { to: '/repositories', label: 'Repositories' },
 ];
 
 const upcomingNav = [
-  { label: 'Repositories', phase: 'Phase 5' },
   { label: 'Analytics', phase: 'Phase 6' },
   { label: 'AI', phase: 'Phase 8–9' },
   { label: 'Docs', phase: 'Phase 12' },

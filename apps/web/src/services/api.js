@@ -84,6 +84,45 @@ export const api = {
 
   listOrganizations: () => request('/organizations'),
 
+  getGithubConnection: () => request('/github/connection'),
+  beginGithubOAuth: () => request('/github/oauth/begin', { method: 'POST' }),
+  disconnectGithub: () =>
+    request('/github/disconnect', { method: 'POST', acceptStatus: [204] }),
+
+  listRepositories: (orgId) => request(`/organizations/${orgId}/repositories`),
+  importRepository: (orgId, payload) =>
+    request(`/organizations/${orgId}/repositories/import`, { method: 'POST', body: payload }),
+  getRepository: (orgId, repoId) => request(`/organizations/${orgId}/repositories/${repoId}`),
+  syncRepository: (orgId, repoId) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/sync`, { method: 'POST' }),
+  deleteRepository: (orgId, repoId) =>
+    request(`/organizations/${orgId}/repositories/${repoId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
+  listPullRequests: (orgId, repoId, params = {}) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/pull-requests${toQuery(params)}`),
+  listBranches: (orgId, repoId) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/branches`),
+  listCommits: (orgId, repoId, params = {}) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/commits${toQuery(params)}`),
+  listIssues: (orgId, repoId, params = {}) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/issues${toQuery(params)}`),
+
+  listWebhooks: (orgId, repoId) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/webhooks`),
+  createWebhook: (orgId, repoId, payload) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/webhooks`, {
+      method: 'POST',
+      body: payload,
+    }),
+  deleteWebhook: (orgId, repoId, webhookId) =>
+    request(`/organizations/${orgId}/repositories/${repoId}/webhooks/${webhookId}`, {
+      method: 'DELETE',
+      acceptStatus: [204],
+    }),
+
   listProjects: (orgId, params = {}) => request(`/organizations/${orgId}/projects${toQuery(params)}`),
   getProject: (orgId, projectId) => request(`/organizations/${orgId}/projects/${projectId}`),
   createProject: (orgId, payload) =>

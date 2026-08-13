@@ -12,6 +12,8 @@ import { ResetPassword } from './pages/reset-password.jsx';
 import { Projects } from './pages/projects.jsx';
 import { ProjectDetail } from './pages/project-detail.jsx';
 import { TaskDetail } from './pages/task-detail.jsx';
+import { Repositories } from './pages/repositories.jsx';
+import { RepositoryDetail } from './pages/repository-detail.jsx';
 
 export function App() {
   return (
@@ -34,6 +36,8 @@ export function App() {
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:projectId" element={<ProjectDetail />} />
           <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
+          <Route path="repositories" element={<Repositories />} />
+          <Route path="repositories/:repoId" element={<RepositoryDetail />} />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>

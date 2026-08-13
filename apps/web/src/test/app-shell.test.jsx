@@ -34,8 +34,8 @@ describe('AppShell', () => {
     expect(screen.getByText('DEVFORGE')).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Dashboard' })).toBeInTheDocument();
     expect(screen.getByRole('link', { name: 'Projects' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Repositories' })).toBeInTheDocument();
     expect(screen.getByText('Modules')).toBeInTheDocument();
-    expect(screen.getByText('Repositories')).toBeInTheDocument();
   });
 
   it('toggles the theme and persists the choice', async () => {
