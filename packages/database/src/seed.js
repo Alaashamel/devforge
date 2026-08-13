@@ -8,6 +8,8 @@ import { env } from './env.js';
 // seeded rows stay referenceable from code/tests while passing uuid validation.
 const U = '00000000-0000-4000-8000-0000000000';
 const user = (n) => `${U}${String(n).padStart(2, '0')}`;
+// `user()` only addresses 2-digit ids; `gen()` supports arbitrary ids.
+const gen = (n) => `00000000-0000-4000-8000-${String(n).padStart(12, '0')}`;
 
 // Documented dev credentials so seeded accounts are actually usable. Fast
 // parameters are fine here: verification re-reads costs from the hash.
@@ -225,9 +227,11 @@ const seed = async (db) => {
 
   await db.query(
     `INSERT INTO github_connections (id, user_id, github_user_id, github_login, access_token_encrypted, scopes)
-     VALUES ($1, $2, 7654321, 'alaa-devforge', 'dev-only-placeholder-token', '{repo,read:org}')
+     VALUES ($1, $2, 7654321, 'alaa-devforge', 'dev-only-placeholder-token', '{repo,read:org}'),
+            ($3, $4, 8765432, 'jordan-rivera', 'dev-only-placeholder-token', '{repo,read:org}'),
+            ($5, $6, 9876543, 'sam-okafor', 'dev-only-placeholder-token', '{repo,read:org}')
      ON CONFLICT (github_user_id) DO NOTHING`,
-    [user(90), user(1)],
+    [user(90), user(1), user(98), user(2), user(99), user(3)],
   );
 
   await db.query(
@@ -249,6 +253,57 @@ const seed = async (db) => {
      VALUES ($1, $2, 1, 'feat(database): migration tooling and baseline schema', 'open', 'Alaashamel', 'feat/database-schema', 'main', 1200, 40)
      ON CONFLICT (repository_id, number) DO NOTHING`,
     [user(93), user(91)],
+  );
+
+  // Historical pull requests so the Phase 6 analytics dashboard has meaningful
+  // velocity, health and contributor data on a fresh seed. Created/merged dates
+  // are spread across the trailing ~10 weeks.
+  const seedNow = Date.now();
+  const daysAgo = (n) => new Date(seedNow - n * 86400000);
+  const prData = [
+    { id: gen(100), number: 2, title: 'feat(auth): refresh token rotation', state: 'merged', author: 'alaa-devforge', head: 'feat/refresh-rotation', base: 'main', add: 850, del: 120, merged: 70 },
+    { id: gen(101), number: 3, title: 'feat(projects): kanban board ordering', state: 'merged', author: 'alaa-devforge', head: 'feat/kanban-order', base: 'main', add: 620, del: 90, merged: 63 },
+    { id: gen(102), number: 4, title: 'feat(github): repository import and sync', state: 'merged', author: 'alaa-devforge', head: 'feat/repo-import', base: 'main', add: 1100, del: 210, merged: 56 },
+    { id: gen(103), number: 5, title: 'fix(api): bigint serialization', state: 'merged', author: 'jordan-rivera', head: 'fix/bigint', base: 'main', add: 95, del: 18, merged: 49 },
+    { id: gen(104), number: 6, title: 'feat(web): repositories pages', state: 'merged', author: 'jordan-rivera', head: 'feat/repo-pages', base: 'main', add: 740, del: 130, merged: 42 },
+    { id: gen(105), number: 7, title: 'feat(webhooks): signature verification', state: 'merged', author: 'alaa-devforge', head: 'feat/webhook-verify', base: 'main', add: 480, del: 60, merged: 35 },
+    { id: gen(106), number: 8, title: 'chore(ci): faster build cache', state: 'closed', author: 'sam-okafor', head: 'chore/ci-cache', base: 'main', add: 60, del: 40, merged: null },
+    { id: gen(107), number: 9, title: 'feat(analytics): velocity dashboard', state: 'open', author: 'alaa-devforge', head: 'feat/velocity', base: 'main', add: 320, del: 40, merged: null },
+  ];
+  for (const pr of prData) {
+    const created = daysAgo((pr.merged ?? 10) + 3);
+    await db.query(
+      `INSERT INTO pull_requests (id, repository_id, number, title, state, author, head_ref, base_ref, additions, deletions, merged_at, created_at)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+       ON CONFLICT (repository_id, number) DO NOTHING`,
+      [pr.id, user(91), pr.number, pr.title, pr.state, pr.author, pr.head, pr.base, pr.add, pr.del, pr.merged !== null ? daysAgo(pr.merged) : null, created],
+    );
+  }
+
+  // Completed tasks (with estimates) spread across recent weeks so velocity and
+  // developer metrics render on a fresh database.
+  const doneTasks = [
+    { id: user(73), type: 'task', status: 'done', priority: 'high', title: 'Wire auth-ready API client', assignee: user(1), estimate: 3, ago: 70 },
+    { id: user(74), type: 'issue', status: 'done', priority: 'medium', title: 'Fix readiness 503 display', assignee: user(2), estimate: 2, ago: 63 },
+    { id: user(75), type: 'bug', status: 'done', priority: 'urgent', title: 'Handle bigint fields in API', assignee: user(2), estimate: 1, ago: 49 },
+    { id: user(76), type: 'task', status: 'done', priority: 'high', title: 'Repository import UI', assignee: user(1), estimate: 5, ago: 42 },
+    { id: user(77), type: 'issue', status: 'done', priority: 'high', title: 'Webhook signature failures', assignee: user(3), estimate: 2, ago: 35 },
+    { id: user(78), type: 'task', status: 'done', priority: 'medium', title: 'Sync pull requests on webhook', assignee: user(1), estimate: 3, ago: 28 },
+  ];
+  for (const t of doneTasks) {
+    await db.query(
+      `INSERT INTO tasks (id, project_id, milestone_id, type, status, priority, title, description, assignee_id, reporter_id, position, estimate, created_at, updated_at)
+       VALUES ($1, $2, NULL, $3, $4, $5, $6, NULL, $7, $8, 0, $9, $10, $11)
+       ON CONFLICT (id) DO NOTHING`,
+      [t.id, user(40), t.type, t.status, t.priority, t.title, t.assignee, user(1), t.estimate, daysAgo(t.ago + 7), daysAgo(t.ago)],
+    );
+  }
+
+  await db.query(
+    `INSERT INTO code_reviews (id, repository_id, pull_request_id, status, summary, findings, severity_counts, model, created_at, updated_at)
+     VALUES ($1, $2, $3, 'completed', 'Import flow looks solid. Minor nits on error paths.', $4, $5, 'gpt-4o-mini', $6, $6)
+     ON CONFLICT (id) DO NOTHING`,
+    [gen(108), user(91), user(93), JSON.stringify([{ severity: 'info', rule: 'no-unused-vars', file: 'src/routes.js' }]), JSON.stringify({ info: 1 }), daysAgo(55)],
   );
 
   await db.query(
@@ -298,3 +353,4 @@ main().catch((err) => {
   console.error(`[database] seed failed: ${err.message}`);
   process.exitCode = 1;
 });
+

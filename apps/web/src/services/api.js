@@ -237,4 +237,17 @@ export const api = {
       `/organizations/${orgId}/projects/${projectId}/tasks/${taskId}/dependencies/${dependsOnId}`,
       { method: 'DELETE', acceptStatus: [204] },
     ),
+
+  getAnalyticsOverview: (orgId) =>
+    request(`/organizations/${orgId}/analytics/overview`),
+  getAnalyticsVelocity: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/analytics/velocity${toQuery(params)}`),
+  getAnalyticsHealth: (orgId) =>
+    request(`/organizations/${orgId}/analytics/health`),
+  getAnalyticsDevelopers: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/analytics/developers${toQuery(params)}`),
+  listRepositoryAnalytics: (orgId) =>
+    request(`/organizations/${orgId}/analytics/repositories`),
+  getRepositoryAnalytics: (orgId, repoId) =>
+    request(`/organizations/${orgId}/analytics/repositories/${repoId}/activity`),
 };

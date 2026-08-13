@@ -10,10 +10,10 @@ const primaryNav = [
   { to: '/', label: 'Dashboard', end: true },
   { to: '/projects', label: 'Projects' },
   { to: '/repositories', label: 'Repositories' },
+  { to: '/analytics', label: 'Analytics' },
 ];
 
 const upcomingNav = [
-  { label: 'Analytics', phase: 'Phase 6' },
   { label: 'AI', phase: 'Phase 8–9' },
   { label: 'Docs', phase: 'Phase 12' },
 ];
