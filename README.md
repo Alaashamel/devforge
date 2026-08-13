@@ -8,9 +8,11 @@ DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 1 — Application Foundation.** The web app and API run locally
-> (`npm run dev`) with a health-checked dashboard, 17 passing tests, shared
-> linting and a CI quality gate. Phase 2 (database) is next.
+> **Status: Phase 5 — GitHub.** The web app and API run locally (`npm run dev`)
+> with authentication & RBAC, project management (kanban + roadmaps), GitHub
+> OAuth with encrypted tokens, repository import/sync, and webhooks with
+> signature verification. **188 passing tests** (136 API, 37 web, 15 database),
+> shared linting and a CI quality gate. Phase 6 (analytics) is next.
 
 ---
 
@@ -71,12 +73,12 @@ a working state.
 
 | Phase | Focus |
 | --- | --- |
-| 0 | Product foundation (this phase) |
-| 1 | Application foundation — runnable web + API locally |
-| 2 | Database — schema, migrations, seed data |
-| 3 | Authentication & authorization |
-| 4 | Project management |
-| 5 | GitHub integration |
+| 0 | Product foundation ✅ |
+| 1 | Application foundation — runnable web + API locally ✅ |
+| 2 | Database — schema, migrations, seed data ✅ |
+| 3 | Authentication & authorization ✅ |
+| 4 | Project management ✅ |
+| 5 | GitHub integration ✅ |
 | 6 | Developer analytics |
 | 7 | Real-time collaboration |
 | 8 | AI foundation — AI service, provider abstraction, RAG |
@@ -127,6 +129,15 @@ After seeding (`npm run db:seed`), these accounts are available with password
 - `alaa@devforge.test` — owner of the DevForge Inc. org
 - `jordan@devforge.test` — admin (and owner of Acme Labs)
 - `sam@devforge.test` — developer (email unverified)
+
+### GitHub integration
+
+To use the GitHub module (OAuth connect, repository import, webhooks), create a
+[GitHub OAuth app](https://github.com/settings/developers) and set the GitHub
+variables in `.env` — at minimum `GITHUB_CLIENT_ID`, `GITHUB_CLIENT_SECRET`
+and `GITHUB_ENCRYPTION_KEY` (see `.env.example`). Set `API_BASE_URL` to a
+publicly reachable address so webhook deliveries work in production. In
+development, leave the `GITHUB_*` variables empty to run without the module.
 
 ## Development commands
 
