@@ -32,6 +32,8 @@ import { createGithubClient } from './modules/github/client.js';
 import { createGithubCrypto } from './modules/github/crypto.js';
 import { createGithubController } from './modules/github/controller.js';
 import { createGithubRouter, createRepositoryRouter } from './modules/github/routes.js';
+import { createAnalyticsService } from './modules/analytics/service.js';
+import { createAnalyticsRouter } from './modules/analytics/routes.js';
 
 function buildDefaultAuth() {
   const accessTokens = createAccessTokenService({
@@ -57,7 +59,7 @@ function buildDefaultAuth() {
   return { service, middleware, limiter };
 }
 
-export function buildDefaultModules({ pool: dbPool = pool, resolveRole, github = null } = {}) {
+export function buildDefaultModules({ pool: dbPool = pool, resolveRole, github = null, analytics = null } = {}) {
   return {
     organizations: createOrganizationService({ pool: dbPool }),
     projects: createProjectService({ pool: dbPool }),
@@ -80,6 +82,7 @@ export function buildDefaultModules({ pool: dbPool = pool, resolveRole, github =
         webBaseUrl: env.WEB_BASE_URL,
         apiBaseUrl: env.API_BASE_URL,
       }),
+    analytics: analytics ?? createAnalyticsService({ pool: dbPool }),
   };
 }
 
@@ -181,6 +184,14 @@ export function createApp({ auth = null, modules = null } = {}) {
     authBundle.middleware.requireAuth,
     createRepositoryRouter({
       service: moduleBundle.github,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/analytics',
+    authBundle.middleware.requireAuth,
+    createAnalyticsRouter({
+      service: moduleBundle.analytics,
       authorize: authBundle.middleware.authorize,
     }),
   );
