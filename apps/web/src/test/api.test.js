@@ -321,4 +321,61 @@ describe('api client', () => {
     );
     expect(options.method).toBe('DELETE');
   });
+
+  it('fetches the analytics overview from the org-scoped path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { repositories: 2, pullRequests: 9 } }),
+    });
+
+    await expect(api.getAnalyticsOverview('org-1')).resolves.toEqual({
+      repositories: 2,
+      pullRequests: 9,
+    });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/analytics/overview');
+  });
+
+  it('fetches velocity with the weeks query param', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { series: [] } }),
+    });
+
+    await api.getAnalyticsVelocity('org-1', { weeks: 12 });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/analytics/velocity?weeks=12',
+    );
+  });
+
+  it('fetches health, developers and repository analytics from nested paths', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: {} }),
+    });
+
+    await api.getAnalyticsHealth('org-1');
+    expect(globalThis.fetch.mock.calls[0][0]).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/analytics/health',
+    );
+
+    await api.getAnalyticsDevelopers('org-1', { weeks: 12 });
+    expect(globalThis.fetch.mock.calls[1][0]).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/analytics/developers?weeks=12',
+    );
+
+    await api.listRepositoryAnalytics('org-1');
+    expect(globalThis.fetch.mock.calls[2][0]).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/analytics/repositories',
+    );
+
+    await api.getRepositoryAnalytics('org-1', 'r-1');
+    expect(globalThis.fetch.mock.calls[3][0]).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/analytics/repositories/r-1/activity',
+    );
+  });
 });
