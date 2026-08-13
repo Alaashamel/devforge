@@ -34,6 +34,13 @@ import { createGithubController } from './modules/github/controller.js';
 import { createGithubRouter, createRepositoryRouter } from './modules/github/routes.js';
 import { createAnalyticsService } from './modules/analytics/service.js';
 import { createAnalyticsRouter } from './modules/analytics/routes.js';
+import { createRealtimeHub } from './modules/realtime/index.js';
+import { createNotificationService } from './modules/notifications/service.js';
+import { createNotificationRouter } from './modules/notifications/routes.js';
+import { createActivityService } from './modules/activity/service.js';
+import { createActivityRouter } from './modules/activity/routes.js';
+import { createChatService } from './modules/chat/service.js';
+import { createChatRouter } from './modules/chat/routes.js';
 
 function buildDefaultAuth() {
   const accessTokens = createAccessTokenService({
@@ -56,16 +63,27 @@ function buildDefaultAuth() {
     resolveRole: service.resolveEffectiveRole,
   });
   const limiter = createRateLimiter({ limits: AUTH_RATE_LIMITS });
-  return { service, middleware, limiter };
+  return { service, middleware, limiter, accessTokens };
 }
 
-export function buildDefaultModules({ pool: dbPool = pool, resolveRole, github = null, analytics = null } = {}) {
+export function buildDefaultModules({
+  pool: dbPool = pool,
+  resolveRole,
+  github = null,
+  analytics = null,
+  realtime = null,
+} = {}) {
+  const notifications = createNotificationService({ pool: dbPool, realtime });
+  const activity = createActivityService({ pool: dbPool, realtime });
   return {
     organizations: createOrganizationService({ pool: dbPool }),
     projects: createProjectService({ pool: dbPool }),
     milestones: createMilestoneService({ pool: dbPool }),
     labels: createLabelService({ pool: dbPool }),
-    tasks: createTaskService({ pool: dbPool, resolveRole }),
+    tasks: createTaskService({ pool: dbPool, resolveRole, realtime, notifications, activity }),
+    notifications,
+    activity,
+    chat: createChatService({ pool: dbPool, realtime }),
     github:
       github ??
       createGithubService({
@@ -86,7 +104,7 @@ export function buildDefaultModules({ pool: dbPool = pool, resolveRole, github =
   };
 }
 
-export function createApp({ auth = null, modules = null } = {}) {
+export function createApp({ auth = null, modules = null, realtime = null } = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -107,7 +125,21 @@ export function createApp({ auth = null, modules = null } = {}) {
   });
 
   const authBundle = auth ?? buildDefaultAuth();
-  const moduleBundle = modules ?? buildDefaultModules({ pool, resolveRole: authBundle.service.resolveEffectiveRole });
+  const hub =
+    realtime ??
+    createRealtimeHub({
+      pool,
+      accessTokens: authBundle.accessTokens,
+      resolveRole: authBundle.service.resolveEffectiveRole,
+    });
+  const moduleBundle =
+    modules ??
+    buildDefaultModules({
+      pool,
+      resolveRole: authBundle.service.resolveEffectiveRole,
+      realtime: hub,
+    });
+  app.locals.realtime = hub;
 
   // Webhook delivery is signed, so it must read the raw body. Register before
   // the JSON parser so express.json never runs on this route.
@@ -138,6 +170,7 @@ export function createApp({ auth = null, modules = null } = {}) {
     createOrganizationRouter({
       service: moduleBundle.organizations,
       requireAuth: authBundle.middleware.requireAuth,
+      authorize: authBundle.middleware.authorize,
     }),
   );
   app.use(
@@ -192,6 +225,29 @@ export function createApp({ auth = null, modules = null } = {}) {
     authBundle.middleware.requireAuth,
     createAnalyticsRouter({
       service: moduleBundle.analytics,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/notifications',
+    createNotificationRouter({
+      service: moduleBundle.notifications,
+      requireAuth: authBundle.middleware.requireAuth,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/activity',
+    authBundle.middleware.requireAuth,
+    createActivityRouter({
+      service: moduleBundle.activity,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use(
+    '/api/v1/organizations/:orgId/chat',
+    authBundle.middleware.requireAuth,
+    createChatRouter({
+      service: moduleBundle.chat,
       authorize: authBundle.middleware.authorize,
     }),
   );
