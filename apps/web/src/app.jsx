@@ -1,3 +1,4 @@
+import { lazy, Suspense } from 'react';
 import { Routes, Route } from 'react-router-dom';
 import { AppShell } from './layouts/app-shell.jsx';
 import { ErrorBoundary } from './components/error-boundary.jsx';
@@ -14,6 +15,12 @@ import { ProjectDetail } from './pages/project-detail.jsx';
 import { TaskDetail } from './pages/task-detail.jsx';
 import { Repositories } from './pages/repositories.jsx';
 import { RepositoryDetail } from './pages/repository-detail.jsx';
+
+const Analytics = lazy(() => import('./pages/analytics.jsx'));
+
+function LazyFallback() {
+  return <p className="text-sm text-muted">Loading…</p>;
+}
 
 export function App() {
   return (
@@ -38,6 +45,14 @@ export function App() {
           <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
           <Route path="repositories" element={<Repositories />} />
           <Route path="repositories/:repoId" element={<RepositoryDetail />} />
+          <Route
+            path="analytics"
+            element={
+              <Suspense fallback={<LazyFallback />}>
+                <Analytics />
+              </Suspense>
+            }
+          />
           <Route path="*" element={<NotFound />} />
         </Route>
       </Routes>
