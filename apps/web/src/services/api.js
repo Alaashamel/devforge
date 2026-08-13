@@ -250,4 +250,20 @@ export const api = {
     request(`/organizations/${orgId}/analytics/repositories`),
   getRepositoryAnalytics: (orgId, repoId) =>
     request(`/organizations/${orgId}/analytics/repositories/${repoId}/activity`),
+
+  listOrganizationMembers: (orgId) => request(`/organizations/${orgId}/members`),
+
+  listNotifications: (params = {}) =>
+    request(`/notifications${toQuery(params)}`),
+  getNotificationUnreadCount: () => request('/notifications/unread-count'),
+  markNotificationRead: (id) => request(`/notifications/${id}/read`, { method: 'POST' }),
+  markAllNotificationsRead: () => request('/notifications/read-all', { method: 'POST' }),
+
+  listOrganizationActivity: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/activity${toQuery(params)}`),
+
+  listChatMessages: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/chat/messages${toQuery(params)}`),
+  sendChatMessage: (orgId, payload) =>
+    request(`/organizations/${orgId}/chat/messages`, { method: 'POST', body: payload }),
 };
