@@ -8,11 +8,13 @@ DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 5 — GitHub.** The web app and API run locally (`npm run dev`)
+> **Status: Phase 6 — Analytics.** The web app and API run locally (`npm run dev`)
 > with authentication & RBAC, project management (kanban + roadmaps), GitHub
-> OAuth with encrypted tokens, repository import/sync, and webhooks with
-> signature verification. **188 passing tests** (136 API, 37 web, 15 database),
-> shared linting and a CI quality gate. Phase 6 (analytics) is next.
+> OAuth with encrypted tokens, repository import/sync, webhooks with signature
+> verification, and an analytics dashboard (velocity, health, contributors,
+> developers and repository activity). **209 passing tests** (152 API, 42 web,
+> 15 database), shared linting and a CI quality gate. Phase 7 (real-time) is
+> next.
 
 ---
 
@@ -50,7 +52,7 @@ single engineering workspace where:
 ## Technology stack
 
 - **Frontend:** React (JavaScript), Vite, Tailwind CSS, React Router, TanStack
-  Query, Zustand, React Hook Form, Zod, Socket.io Client.
+  Query, Zustand, Recharts, React Hook Form, Zod, Socket.io Client.
 - **Backend:** Node.js, Express, REST, Socket.io, JWT, PostgreSQL, Redis.
 - **AI service:** Python, FastAPI, provider-agnostic model gateway, RAG.
 - **DevOps:** Docker, Docker Compose, GitHub Actions, Nginx.
@@ -79,7 +81,7 @@ a working state.
 | 3 | Authentication & authorization ✅ |
 | 4 | Project management ✅ |
 | 5 | GitHub integration ✅ |
-| 6 | Developer analytics |
+| 6 | Developer analytics ✅ |
 | 7 | Real-time collaboration |
 | 8 | AI foundation — AI service, provider abstraction, RAG |
 | 9 | AI features — analyzer, code review, docs, assistant |

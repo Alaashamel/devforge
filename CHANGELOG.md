@@ -209,3 +209,44 @@ Added:
   a primary nav item.
 - Web API client methods for the GitHub endpoints plus 7 new client tests.
 - Test counts: 136 API tests (12 files), 37 web tests, 15 database tests.
+
+### Phase 6 — Analytics
+
+Added:
+
+- `apps/api` analytics module
+  (`/api/v1/organizations/:orgId/analytics`): overview (counts, additions/
+  deletions, completion ratio, top contributors, recently merged), velocity
+  (Monday-aligned weekly buckets over a 1–52 week window for merged PRs, done
+  tasks, closed issues and completed reviews), health (task completion, merge
+  rate, issue close rate and review coverage re-weighted by available
+  components into a 0–100 score with a healthy/degraded/critical/no-data
+  status), developers (in-window task + PR aggregation per team member) and
+  repository summaries, plus per-repository activity
+  (`…/analytics/repositories/:repoId/activity` with monthly, recent and
+  review-by-status breakdowns).
+- `developer_metrics` materialization: the developers endpoint upserts a
+  weekly per-member snapshot (tasks completed, velocity points, PRs merged,
+  health score) so history persists as the team changes.
+- Analytics read endpoints gated by `project.view`, so viewers can render the
+  dashboard.
+- Enriched seed data: GitHub logins for seeded developers, 8 historical pull
+  requests (open/merged/closed over ~10 weeks), 6 done tasks with estimates,
+  an issues-type task, and a completed code review — dashboards are meaningful
+  on a fresh database.
+- Web analytics dashboard (`/analytics`, lazy-loaded): Recharts velocity area
+  chart and completion bar chart, health breakdown with status pills, top
+  contributors, recently-merged list, developers and repository activity
+  tables; "Analytics" promoted to the primary navigation.
+- Web API client methods for all six analytics endpoints plus 3 new client
+  tests; `recharts` added as a dependency with the page code-split out of the
+  main bundle.
+- Test counts: 152 API tests (13 files), 42 web tests, 15 database tests.
+
+Notes:
+
+- Commits are not persisted yet, so velocity/health run on PRs, tasks, issues
+  and reviews; commit-based metrics are expected once real-time sync lands in
+  Phase 7.
+- `developer_metrics.period` is a stripped `date` column; reads use
+  `to_char` so periods are timezone-independent.

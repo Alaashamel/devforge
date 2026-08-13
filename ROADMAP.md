@@ -79,11 +79,21 @@ Deliverables:
 - [x] Branches, commits, pull requests and issues views.
 - [x] Webhook registration with signature verification and retries.
 
-## Phase 6 — Analytics
+## Phase 6 — Analytics (current)
 
-- Commit/PR/issue/review metrics.
-- Project velocity and health dashboard.
-- Repository activity views.
+- [x] Organization analytics API: overview, velocity, health, developers and
+      repository activity endpoints (aggregated from PRs, tasks, issues, code
+      reviews and repositories).
+- [x] Weekly `developer_metrics` materialization so history persists as team
+      snapshots.
+- [x] Enriched seed data (historical PRs, done tasks with estimates, completed
+      reviews, GitHub logins) so dashboards are meaningful on a fresh database.
+- [x] Web analytics dashboard with Recharts (velocity + completion charts,
+      health breakdown, contributors, developers and repository tables).
+- [x] Analytics integration tests (16) and web client + page tests.
+- [ ] Commit-based metrics — commits are not persisted yet; velocity and health
+      run on PRs, tasks, issues and reviews until real-time sync lands in
+      Phase 7.
 
 ## Phase 7 — Real-Time
 

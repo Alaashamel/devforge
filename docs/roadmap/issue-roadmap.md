@@ -89,10 +89,10 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Commit/PR/issue/review metrics aggregation | feature | |
-| Project velocity + health dashboard | feature | |
-| Repository activity views | feature | |
-| Analytics dashboard UI (Recharts) | feature | |
+| Commit/PR/issue/review metrics aggregation | feature | ✅ done — overview + health aggregate live tables; commits left for real-time sync |
+| Project velocity + health dashboard | feature | ✅ done — weekly buckets, weighted health score, developer metrics materialized |
+| Repository activity views | feature | ✅ done — repo summaries + per-repo monthly/recent/review activity |
+| Analytics dashboard UI (Recharts) | feature | ✅ done — lazy-loaded page with velocity/completion charts + tables |
 
 ## Phase 7 — Real-Time
 
