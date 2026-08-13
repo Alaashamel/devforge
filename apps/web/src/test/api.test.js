@@ -224,4 +224,101 @@ describe('api client', () => {
       'http://localhost:4000/api/v1/organizations/org-1/projects/proj-1/tasks/t-1/dependencies',
     );
   });
+
+  it('begins the GitHub OAuth flow with a POST and returns the authorize URL', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { url: 'https://github.com/login/oauth/authorize?state=x' } }),
+    });
+
+    await expect(api.beginGithubOAuth()).resolves.toEqual({
+      url: 'https://github.com/login/oauth/authorize?state=x',
+    });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/github/oauth/begin');
+    expect(options.method).toBe('POST');
+  });
+
+  it('lists repositories from the org-scoped path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: [{ id: 'r-1', fullName: 'acme/devforge' }] }),
+    });
+
+    await api.listRepositories('org-1');
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/repositories');
+  });
+
+  it('imports a repository via the org-scoped import path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ data: { id: 'r-1', fullName: 'acme/devforge' } }),
+    });
+
+    await api.importRepository('org-1', { fullName: 'acme/devforge' });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/repositories/import');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({ fullName: 'acme/devforge' });
+  });
+
+  it('syncs a repository with a POST to the nested path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { id: 'r-1', lastSyncedAt: '2026-01-01T00:00:00Z' } }),
+    });
+
+    await api.syncRepository('org-1', 'r-1');
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/repositories/r-1/sync');
+    expect(options.method).toBe('POST');
+  });
+
+  it('lists pull requests from the nested path', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { pullRequests: [], meta: {} } }),
+    });
+
+    await api.listPullRequests('org-1', 'r-1', { state: 'open' });
+    const [url] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/repositories/r-1/pull-requests?state=open',
+    );
+  });
+
+  it('creates a webhook with the selected events', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 201,
+      json: async () => ({ data: { id: 'w-1', events: ['push'] } }),
+    });
+
+    await api.createWebhook('org-1', 'r-1', { events: ['push'] });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/repositories/r-1/webhooks');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({ events: ['push'] });
+  });
+
+  it('deletes a webhook with a DELETE request', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 204,
+      json: async () => null,
+    });
+
+    await expect(api.deleteWebhook('org-1', 'r-1', 'w-1')).resolves.toBeUndefined();
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/repositories/r-1/webhooks/w-1',
+    );
+    expect(options.method).toBe('DELETE');
+  });
 });
