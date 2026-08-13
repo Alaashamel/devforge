@@ -15,6 +15,7 @@ import { ProjectDetail } from './pages/project-detail.jsx';
 import { TaskDetail } from './pages/task-detail.jsx';
 import { Repositories } from './pages/repositories.jsx';
 import { RepositoryDetail } from './pages/repository-detail.jsx';
+import { Chat } from './pages/chat.jsx';
 
 const Analytics = lazy(() => import('./pages/analytics.jsx'));
 
@@ -45,6 +46,7 @@ export function App() {
           <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
           <Route path="repositories" element={<Repositories />} />
           <Route path="repositories/:repoId" element={<RepositoryDetail />} />
+          <Route path="chat" element={<Chat />} />
           <Route
             path="analytics"
             element={
