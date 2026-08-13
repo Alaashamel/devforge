@@ -24,6 +24,7 @@ const MIGRATION_NAMES = [
   '0005_collaboration',
   '0006_ai',
   '0007_analytics',
+  '0008_github_unique_connection',
 ];
 
 const EXPECTED_TABLES = [
@@ -139,15 +140,22 @@ describe('migration runner', () => {
 
   it('rolls back the last migration and re-applies it', async () => {
     const rolledBack = await migrateDown({ client, steps: 1 });
-    expect(rolledBack).toEqual(['0007_analytics']);
+    expect(rolledBack).toEqual(['0008_github_unique_connection']);
 
-    const names = await tableNames();
-    expect(names).not.toContain('developer_metrics');
+    const { rows: idx } = await client.query(`
+      SELECT 1 FROM pg_indexes
+      WHERE indexname = 'github_connections_user_id_unique_idx'
+    `);
+    expect(idx).toHaveLength(0);
 
     const reapplied = await migrateUp({ client });
-    expect(reapplied).toEqual(['0007_analytics']);
-    const namesAfter = await tableNames();
-    expect(namesAfter).toContain('developer_metrics');
+    expect(reapplied).toEqual(['0008_github_unique_connection']);
+
+    const { rows: idxAfter } = await client.query(`
+      SELECT 1 FROM pg_indexes
+      WHERE indexname = 'github_connections_user_id_unique_idx'
+    `);
+    expect(idxAfter).toHaveLength(1);
   });
 });
 
@@ -196,10 +204,10 @@ export const down = async () => {};`,
 });
 
 describe('listMigrations helper', () => {
-  it('reports seven baseline migrations', () => {
+  it('reports eight baseline migrations', () => {
     const migrations = listMigrations();
-    expect(migrations).toHaveLength(7);
+    expect(migrations).toHaveLength(8);
     expect(migrations[0].name).toBe('0001_identity');
-    expect(migrations[6].name).toBe('0007_analytics');
+    expect(migrations[7].name).toBe('0008_github_unique_connection');
   });
 });
