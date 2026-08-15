@@ -21,10 +21,10 @@ app/
 ├── providers/         # provider gateway + OpenAI/Anthropic/local adapters
 ├── ingestion/         # fetch, filter, languages, manifests, chunk, redact, snapshot
 ├── context/           # vector store (pgvector), job store, retrieval
-├── pipelines/         # ingest, analysis, scoring orchestration
+├── pipelines/         # ingest, analysis, analyzer, scoring orchestration
 ├── services/          # job orchestration
 └── routers/           # health, jobs
-tests/                 # pytest suite (92 tests)
+tests/                 # pytest suite (98 tests)
 ```
 
 ## Job contract
