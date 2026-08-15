@@ -4,6 +4,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { api } from '../services/api.js';
 import { useWorkspaceStore } from '../stores/workspace.js';
 import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '../components/form.jsx';
+import { AiAnalysisTab } from '../components/ai-analysis-tab.jsx';
 
 const stateTone = {
   open: 'text-green-400',
@@ -139,7 +140,7 @@ export function RepositoryDetail() {
       <ErrorBanner>{error}</ErrorBanner>
 
       <div className="flex flex-wrap gap-2 text-xs text-muted">
-        {['overview', 'pull-requests', 'branches', 'commits', 'issues', 'webhooks'].map((t) => (
+        {['overview', 'pull-requests', 'branches', 'commits', 'issues', 'analysis', 'webhooks'].map((t) => (
           <button
             key={t}
             type="button"
@@ -155,7 +156,7 @@ export function RepositoryDetail() {
         ))}
       </div>
 
-      {!connected && tab !== 'overview' ? (
+      {!connected && tab !== 'overview' && tab !== 'analysis' ? (
         <ErrorBanner>
           This view requires a live GitHub connection. Go to Repositories to connect GitHub.
         </ErrorBanner>
@@ -326,6 +327,10 @@ export function RepositoryDetail() {
             ))}
           </ul>
         )
+      ) : null}
+
+      {tab === 'analysis' ? (
+        <AiAnalysisTab orgId={orgId} repoId={repoId} />
       ) : null}
 
       {tab === 'webhooks' ? (

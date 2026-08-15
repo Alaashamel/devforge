@@ -123,6 +123,15 @@ export const api = {
       acceptStatus: [204],
     }),
 
+  createAnalysis: (orgId, payload) =>
+    request(`/organizations/${orgId}/ai/analyses`, { method: 'POST', body: payload }),
+  listAnalyses: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/ai/analyses${toQuery(params)}`),
+  getAnalysis: (orgId, analysisId) =>
+    request(`/organizations/${orgId}/ai/analyses/${analysisId}`),
+  getAiJobStatus: (orgId, jobId) =>
+    request(`/organizations/${orgId}/ai/jobs/${jobId}`),
+
   listProjects: (orgId, params = {}) => request(`/organizations/${orgId}/projects${toQuery(params)}`),
   getProject: (orgId, projectId) => request(`/organizations/${orgId}/projects/${projectId}`),
   createProject: (orgId, payload) =>
