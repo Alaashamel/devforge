@@ -122,4 +122,26 @@ describe('github client', () => {
     const [url] = fetchImpl.mock.calls[0];
     expect(url).toBe('https://api.github.com/repos/acme/dev%20forge');
   });
+
+  it('downloads a repository tarball as a raw response', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ status: 200, body: 'tar' }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    const response = await client.downloadTarball({ token: 't', fullName: 'a/b', ref: 'main' });
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://api.github.com/repos/a/b/tarball/main');
+    expect(response.status).toBe(200);
+  });
+
+  it('defaults the tarball ref to the repository default branch', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ status: 200, body: 'tar' }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    await client.downloadTarball({ token: 't', fullName: 'a/b' });
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://api.github.com/repos/a/b/tarball');
+  });
+
+  it('encodes tarball refs containing slashes', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ status: 200, body: 'tar' }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    await client.downloadTarball({ token: 't', fullName: 'a/b', ref: 'feature/x' });
+    expect(fetchImpl.mock.calls[0][0]).toBe('https://api.github.com/repos/a/b/tarball/feature%2Fx');
+  });
 });

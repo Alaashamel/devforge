@@ -75,7 +75,7 @@ export function createGithubClient({
     throw new Error('createGithubClient requires a fetch implementation');
   }
 
-  async function request(method, path, { token, body } = {}) {
+  async function request(method, path, { token, body, raw = false } = {}) {
     let attempt = 0;
     for (;;) {
       attempt += 1;
@@ -116,6 +116,9 @@ export function createGithubClient({
           body: rawBody,
           requestPath: path,
         });
+      }
+      if (raw) {
+        return response;
       }
       return parseBody(response);
     }
@@ -172,5 +175,11 @@ export function createGithubClient({
       ),
     deleteWebhook: ({ token, fullName, webhookId }) =>
       request('DELETE', `/repos/${encodeName(fullName)}/hooks/${webhookId}`, { token }),
+    downloadTarball: ({ token, fullName, ref }) =>
+      request(
+        'GET',
+        `/repos/${encodeName(fullName)}/tarball${ref ? `/${encodeURIComponent(ref)}` : ''}`,
+        { token, raw: true },
+      ),
   };
 }
