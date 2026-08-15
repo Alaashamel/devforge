@@ -126,7 +126,8 @@ Deliverables:
 
 - [x] AI Repository Analyzer with health scores (4 scored dimensions,
       strengths/risks/recommendations, run-and-poll UI).
-- [ ] AI Code Review with severity classification.
+- [x] AI Code Review of pull request diffs with severity classification
+      (findings, review score and run-and-poll per-PR UI).
 - [ ] AI Documentation / README generator with preview-and-approve.
 - [ ] AI Engineering Assistant grounded in repository context.
 

@@ -21,10 +21,10 @@ app/
 ├── providers/         # provider gateway + OpenAI/Anthropic/local adapters
 ├── ingestion/         # fetch, filter, languages, manifests, chunk, redact, snapshot
 ├── context/           # vector store (pgvector), job store, retrieval
-├── pipelines/         # ingest, analysis, analyzer, scoring orchestration
+├── pipelines/         # ingest, analysis, analyzer, review, scoring orchestration
 ├── services/          # job orchestration
 └── routers/           # health, jobs
-tests/                 # pytest suite (98 tests)
+tests/                 # pytest suite (109 tests)
 ```
 
 ## Job contract
@@ -38,6 +38,9 @@ typed, validated results:
 - The service pulls the repository archive from the signed URL, ingests it,
   runs the pipeline and updates `ai_jobs`/`ai_analyses` in the shared
   database; the API only reads results back.
+- `code_review` jobs carry the pull request diff inline in `payload.diff`
+  (no archive download/ingestion) and persist `pull_request_number` +
+  `files_changed`/`additions`/`deletions` + a review `score` in the report.
 
 Token formats are mirrored in
 `apps/api/src/modules/ai/tokens.js` (Node) and `app/auth.py` (Python).

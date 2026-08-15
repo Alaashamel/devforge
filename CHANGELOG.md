@@ -357,7 +357,24 @@ Added:
   poll `ai/jobs/:id` to completion and render the overall health score plus
   per-dimension cards (`ai-analysis-tab.jsx`); API client methods
   `createAnalysis`, `listAnalyses`, `getAnalysis`, `getAiJobStatus`.
-- Test counts: 188 API tests (16 files), 98 AI pytest tests (17 files),
-  58 web tests (8 files — new `ai-analysis-tab.test.jsx`), 15 database tests
-  (runner rollback now covers migration `0011`).
+- AI Code Review: new `code_review` analysis type (pull request required).
+  The API fetches the PR diff from GitHub (`getPullRequestDiff` using the
+  `application/vnd.github.diff` Accept header, service method
+  `downloadPullRequestDiff`) and submits it inline in the job payload,
+  skipping the ingestion/archive flow entirely. The AI service classifies
+  findings INFO → CRITICAL (`ReviewFinding`/`ReviewReport`, normalized to
+  canonical severity order, `severity_counts` derived), computes a
+  deterministic review score (per-finding penalties — critical 30, high 15,
+  medium 6, low 2, floored at 0) and persists `pull_request_number`,
+  `files_changed`, `additions` and `deletions` top-level in the report.
+- Node API: `pullRequestNumber` validated on `code_review` jobs (400
+  `VALIDATION_ERROR` when missing) and `GET .../ai/analyses` gains `type` and
+  `pullRequestNumber` filters.
+- Web: per-PR "AI review" panel on the repository pull requests tab
+  (`ai-code-review.jsx`) — run-and-poll job handling, severity badges,
+  review score, findings with file:line locations and suggestions, and an
+  empty state for pull requests without a review.
+- Test counts: 193 API tests (16 files), 109 AI pytest tests (19 files),
+  66 web tests (9 files — new `ai-code-review.test.jsx`), 15 database tests
+  (runner rollback covers migration `0011`).
 
