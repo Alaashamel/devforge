@@ -124,10 +124,11 @@ Deliverables:
 
 ## Phase 9 — AI Features
 
-- AI Repository Analyzer with health scores.
-- AI Code Review with severity classification.
-- AI Documentation / README generator with preview-and-approve.
-- AI Engineering Assistant grounded in repository context.
+- [x] AI Repository Analyzer with health scores (4 scored dimensions,
+      strengths/risks/recommendations, run-and-poll UI).
+- [ ] AI Code Review with severity classification.
+- [ ] AI Documentation / README generator with preview-and-approve.
+- [ ] AI Engineering Assistant grounded in repository context.
 
 ## Phase 10 — DevOps
 

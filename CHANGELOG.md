@@ -335,3 +335,29 @@ Added:
 - Test counts: 185 API tests (16 files — 19 new AI/archive tests), 92 AI
   pytest tests (16 files), 50 web tests, 15 database tests.
 
+### Phase 9 — AI Features
+
+Added:
+
+- Repository Analyzer: new `analyzer` analysis type (migration `0011` extends
+  the `ai_analyses` type CHECK). The AI service scores a repository across
+  four dimensions — architecture, code quality, security, documentation —
+  each with a 0–100 score, summary, strengths, risks and recommendations.
+  Reports are Pydantic-validated (`AnalyzerReport`): the dimension set is
+  enforced and normalized to canonical order, and the `overall` score is a
+  deterministic mean of the dimension scores (`health` reuses the existing
+  `score_snapshot` heuristic).
+- AI service: `analyzer` prompt + `validate_analyzer_report` in
+  `pipelines/analysis.py` (raises `AnalysisError` on invalid output), tests
+  in `tests/test_analyzer.py` (7 tests).
+- Node API: `analyzer` accepted for analysis jobs and a
+  `GET /organizations/:orgId/ai/analyses/:analysisId` route to read a stored
+  report (`service.getAnalysis`).
+- Web: repository detail page gains an "analysis" tab — run an analyzer job,
+  poll `ai/jobs/:id` to completion and render the overall health score plus
+  per-dimension cards (`ai-analysis-tab.jsx`); API client methods
+  `createAnalysis`, `listAnalyses`, `getAnalysis`, `getAiJobStatus`.
+- Test counts: 188 API tests (16 files), 98 AI pytest tests (17 files),
+  58 web tests (8 files — new `ai-analysis-tab.test.jsx`), 15 database tests
+  (runner rollback now covers migration `0011`).
+

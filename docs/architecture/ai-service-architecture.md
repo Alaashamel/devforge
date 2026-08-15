@@ -51,7 +51,7 @@ apps/ai/
 
 apps/api/src/modules/ai/    # API-side orchestration
 ├── tokens.js               # HMAC job/archive tokens (mirrors app/auth.py)
-├── service.js              # createAnalysis · getJobStatus · listAnalyses · streamArchive
+├── service.js              # createAnalysis · getAnalysis · getJobStatus · listAnalyses · streamArchive
 ├── controller.js           # request/response mapping
 ├── routes.js               # org-scoped router + public signed archive router
 └── schemas.js              # Zod input validation
@@ -104,7 +104,7 @@ request body:
 ```json
 {
   "job_id": "<uuid>",
-  "type": "architecture | code_review | docs | readme",
+  "type": "architecture | analyzer | code_review | docs | readme",
   "organization_id": "<uuid>",
   "repository_id": "<uuid>",
   "archive_url": "http://localhost:4000/api/v1/ai/archive/<repoId>?token=<archive-token>",
