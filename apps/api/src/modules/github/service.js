@@ -447,6 +447,22 @@ export function createGithubService({
     return { ok: true };
   }
 
+  async function downloadRepositoryArchive({ orgId, repoId, ref }) {
+    const repo = await assertRepo({ orgId, repoId });
+    const { rows } = await pool.query('SELECT owner_id FROM organizations WHERE id = $1', [orgId]);
+    if (rows.length === 0) {
+      throw notFound('Organization not found');
+    }
+    const response = await withToken(rows[0].owner_id, (token) =>
+      client.downloadTarball({
+        token,
+        fullName: repo.full_name,
+        ref: ref ?? repo.default_branch,
+      }),
+    );
+    return { repo, response };
+  }
+
   async function listPullRequests({ orgId, repoId, query }) {
     await assertRepo({ orgId, repoId });
     const { page, pageSize } = parsePagination(query);
@@ -657,6 +673,7 @@ export function createGithubService({
     listRepositories,
     getRepository,
     removeRepository,
+    downloadRepositoryArchive,
     listPullRequests,
     listBranches,
     listCommits,

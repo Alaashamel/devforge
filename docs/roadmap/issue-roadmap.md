@@ -111,13 +111,14 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| FastAPI service scaffold + health | feature | |
-| Provider gateway (adapters + fallback) | feature | |
-| Repository ingestion (fetch, filter, language detection) | feature | |
-| Embeddings + vector store | feature | |
-| RAG retrieval + context assembly | feature | |
-| AI job contract (API ↔ AI) | feature | |
-| Secret redaction before ingestion | security | 🔒 |
+| FastAPI service scaffold + health | feature | ✅ done — `apps/ai` with `/healthz` router |
+| Provider gateway (adapters + fallback) | feature | ✅ done — OpenAI/Anthropic/local + offline hashing embedder |
+| Repository ingestion (fetch, filter, language detection) | feature | ✅ done — tarball fetch, filter rules, language map, manifests, chunking |
+| Embeddings + vector store | feature | ✅ done — pgvector `ai_document_chunks` (migration 0010) + HNSW index |
+| RAG retrieval + context assembly | feature | ✅ done — hybrid keyword + vector search, token-budgeted |
+| AI job contract (API ↔ AI) | feature | ✅ done — HMAC job/archive tokens, `POST /jobs/{jobId}`, typed results |
+| Secret redaction before ingestion | security | ✅ done — scan + redact before embedding 🔒 |
+| Node API orchestration + archive streaming | feature | ✅ done — analyses/jobs routes + signed `/ai/archive/:repoId` |
 
 ## Phase 9 — AI Features
 

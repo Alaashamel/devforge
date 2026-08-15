@@ -52,7 +52,12 @@ const SECRET_PATTERNS = [
 ];
 
 // Directories that never contain tracked secrets, or are fine to skip.
-const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage']);
+const SKIP_DIRS = new Set(['node_modules', '.git', 'dist', 'build', 'coverage', '__pycache__']);
+
+// Files containing this marker are exempt from the secrets scan. Used by
+// unit-test fixtures that intentionally exercise secret patterns (the AI
+// redaction suite), where a hit is the point of the test.
+const SECRET_SCAN_BYPASS_MARKER = 'validate-repo: intentional secret-pattern fixtures';
 
 const errors = [];
 
@@ -122,13 +127,14 @@ function checkSecrets() {
     const rel = relative(ROOT, file);
     if (rel === 'package-lock.json') continue;
     if (/^\.github\/(workflows|ISSUE_TEMPLATE)\//.test(rel)) continue;
-    if (/\.(png|jpg|jpeg|gif|ico|woff2?|ttf|eot|pdf|lock)$/i.test(rel)) continue;
+    if (/\.(png|jpg|jpeg|gif|ico|woff2?|ttf|eot|pdf|pyc|lock)$/i.test(rel)) continue;
     let content;
     try {
       content = readFileSync(file, 'utf8');
     } catch {
       continue;
     }
+    if (content.includes(SECRET_SCAN_BYPASS_MARKER)) continue;
     for (const { re, label } of SECRET_PATTERNS) {
       if (re.test(content)) {
         fail(`possible ${label} detected in ${rel}`);

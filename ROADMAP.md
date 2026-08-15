@@ -110,10 +110,17 @@ Deliverables:
 
 ## Phase 8 — AI Foundation
 
-- FastAPI service with provider-agnostic gateway.
-- Repository ingestion pipeline.
-- Embeddings and vector search (RAG infrastructure).
-- AI service API contract and validation.
+- [x] FastAPI service with provider-agnostic gateway (see
+      `docs/architecture/ai-service-architecture.md`).
+- [x] Repository ingestion pipeline (fetch, filter, language detection,
+      manifests, chunking, secret redaction, snapshot).
+- [x] Embeddings and vector search (pgvector `ai_document_chunks` with HNSW
+      index, hybrid retrieval, RAG context assembly).
+- [x] AI service API contract and validation (signed job intents, typed job
+      results, Pydantic validation).
+- [x] Node API ↔ AI orchestration: analysis job submission, status polling,
+      signed archive streaming to the AI service.
+- [x] pgvector-backed Docker/CI and test coverage for both stacks.
 
 ## Phase 9 — AI Features
 

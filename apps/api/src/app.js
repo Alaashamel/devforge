@@ -41,6 +41,8 @@ import { createActivityService } from './modules/activity/service.js';
 import { createActivityRouter } from './modules/activity/routes.js';
 import { createChatService } from './modules/chat/service.js';
 import { createChatRouter } from './modules/chat/routes.js';
+import { createAiService } from './modules/ai/service.js';
+import { createAiRouter, createAiArchiveRouter } from './modules/ai/routes.js';
 
 function buildDefaultAuth() {
   const accessTokens = createAccessTokenService({
@@ -72,9 +74,26 @@ export function buildDefaultModules({
   github = null,
   analytics = null,
   realtime = null,
+  ai = null,
 } = {}) {
   const notifications = createNotificationService({ pool: dbPool, realtime });
   const activity = createActivityService({ pool: dbPool, realtime });
+  const githubService =
+    github ??
+    createGithubService({
+      pool: dbPool,
+      client: createGithubClient({ apiUrl: env.GITHUB_API_URL, userAgent: env.GITHUB_APP_NAME }),
+      crypto: createGithubCrypto({ key: env.GITHUB_ENCRYPTION_KEY }),
+      oauth: {
+        clientId: env.GITHUB_CLIENT_ID,
+        clientSecret: env.GITHUB_CLIENT_SECRET,
+        authorizeUrl: env.GITHUB_OAUTH_URL,
+        callbackUrl: env.GITHUB_OAUTH_CALLBACK_URL,
+        scope: 'repo read:org',
+      },
+      webBaseUrl: env.WEB_BASE_URL,
+      apiBaseUrl: env.API_BASE_URL,
+    });
   return {
     organizations: createOrganizationService({ pool: dbPool }),
     projects: createProjectService({ pool: dbPool }),
@@ -84,20 +103,16 @@ export function buildDefaultModules({
     notifications,
     activity,
     chat: createChatService({ pool: dbPool, realtime }),
-    github:
-      github ??
-      createGithubService({
+    github: githubService,
+    ai:
+      ai ??
+      createAiService({
         pool: dbPool,
-        client: createGithubClient({ apiUrl: env.GITHUB_API_URL, userAgent: env.GITHUB_APP_NAME }),
-        crypto: createGithubCrypto({ key: env.GITHUB_ENCRYPTION_KEY }),
-        oauth: {
-          clientId: env.GITHUB_CLIENT_ID,
-          clientSecret: env.GITHUB_CLIENT_SECRET,
-          authorizeUrl: env.GITHUB_OAUTH_URL,
-          callbackUrl: env.GITHUB_OAUTH_CALLBACK_URL,
-          scope: 'repo read:org',
-        },
-        webBaseUrl: env.WEB_BASE_URL,
+        github: githubService,
+        aiServiceUrl: env.AI_SERVICE_URL,
+        jobSecret: env.AI_JOB_SECRET,
+        jobTokenTtlSeconds: env.AI_JOB_TTL_SECONDS,
+        archiveTokenTtlSeconds: env.AI_ARCHIVE_TTL_SECONDS,
         apiBaseUrl: env.API_BASE_URL,
       }),
     analytics: analytics ?? createAnalyticsService({ pool: dbPool }),
@@ -251,6 +266,15 @@ export function createApp({ auth = null, modules = null, realtime = null } = {})
       authorize: authBundle.middleware.authorize,
     }),
   );
+  app.use(
+    '/api/v1/organizations/:orgId/ai',
+    authBundle.middleware.requireAuth,
+    createAiRouter({
+      service: moduleBundle.ai,
+      authorize: authBundle.middleware.authorize,
+    }),
+  );
+  app.use('/api/v1/ai/archive', createAiArchiveRouter({ service: moduleBundle.ai }));
 
   app.use(notFoundHandler());
   app.use(errorHandler());

@@ -45,7 +45,7 @@ export async function ensureTestDatabase() {
   }
 }
 
-export function createTestApp({ pool, mailer, limiter, github, analytics, realtime }) {
+export function createTestApp({ pool, mailer, limiter, github, analytics, realtime, ai }) {
   const accessTokens = createAccessTokenService({ secret: 'a'.repeat(40), ttl: '15m' });
   const service = createAuthService({
     pool,
@@ -65,6 +65,7 @@ export function createTestApp({ pool, mailer, limiter, github, analytics, realti
     github,
     analytics,
     realtime,
+    ai,
   });
   return createApp({
     auth: { service, middleware, limiter: authLimiter, accessTokens },

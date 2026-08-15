@@ -32,6 +32,10 @@ const envSchema = z
       .default('http://localhost:4000/api/v1/github/oauth/callback'),
     GITHUB_APP_NAME: z.string().min(1).default('devforge'),
     GITHUB_ENCRYPTION_KEY: z.string().min(16, 'GITHUB_ENCRYPTION_KEY must be at least 16 characters').default(DEFAULT_GITHUB_ENCRYPTION_KEY),
+    AI_SERVICE_URL: z.string().url().default('http://localhost:5001'),
+    AI_JOB_SECRET: z.string().min(16, 'AI_JOB_SECRET must be at least 16 characters').default('devforge-dev-ai-job-secret'),
+    AI_JOB_TTL_SECONDS: z.coerce.number().int().min(60).max(3600).default(300),
+    AI_ARCHIVE_TTL_SECONDS: z.coerce.number().int().min(60).max(7200).default(900),
   })
   .superRefine((value, ctx) => {
     if (value.NODE_ENV === 'production' && value.JWT_ACCESS_SECRET === DEFAULT_ACCESS_SECRET) {
@@ -53,6 +57,13 @@ const envSchema = z
         code: z.ZodIssueCode.custom,
         path: ['API_BASE_URL'],
         message: 'API_BASE_URL must be a publicly reachable URL in production',
+      });
+    }
+    if (value.NODE_ENV === 'production' && value.AI_JOB_SECRET === 'devforge-dev-ai-job-secret') {
+      ctx.addIssue({
+        code: z.ZodIssueCode.custom,
+        path: ['AI_JOB_SECRET'],
+        message: 'AI_JOB_SECRET must be set explicitly in production',
       });
     }
   });
