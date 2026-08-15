@@ -9,10 +9,12 @@ engineering can evolve without touching the core platform.
 
 ```
 Browser ──► API (apps/api)
-                │  POST /api/v1/ai/jobs  (bounded job intents)
+                │  POST /api/v1/organizations/:orgId/ai/analyses  (bounded job intents)
+                │  GET  /api/v1/organizations/:orgId/ai/jobs/:jobId  (status)
                 ▼
            AI service (apps/ai)
-                │  FastAPI routes
+                │  POST /jobs/{jobId}          (X-Devforge-Job-Token)
+                │  GET  /api/v1/ai/archive/:repoId?token=…   (signed archive pull)
                 ▼
            Pipelines: ingestion · analysis · review · docs · assistant
                 │  provider gateway (OpenAI / Anthropic / local …)
@@ -27,6 +29,8 @@ Rules:
   structured job results that the AI service persists/returns through a
   typed contract.
 - The AI service **never receives credentials** (GitHub tokens, org secrets).
+  Archives are pulled from a signed API endpoint; the API holds the GitHub
+  token server-side.
 
 ## 2. Layout
 
@@ -34,16 +38,23 @@ Rules:
 apps/ai/
 ├── app/
 │   ├── main.py            # FastAPI app, routers, lifecycle
-│   ├── routers/           # jobs, health, ingestion
+│   ├── routers/           # jobs, health
 │   ├── models/            # Pydantic schemas (input/output contracts)
 │   ├── services/          # pipeline orchestration
 │   ├── providers/         # provider gateway + adapters
-│   ├── pipelines/         # repository, review, docs, assistant
-│   ├── context/           # retrieval, vector store client
+│   ├── pipelines/         # ingestion, analysis, scoring
+│   ├── context/           # retrieval, vector store, job store
 │   ├── ingestion/         # repo fetch, filtering, language detection
 │   └── config.py          # env config (pydantic-settings)
 ├── tests/
 └── pyproject.toml
+
+apps/api/src/modules/ai/    # API-side orchestration
+├── tokens.js               # HMAC job/archive tokens (mirrors app/auth.py)
+├── service.js              # createAnalysis · getJobStatus · listAnalyses · streamArchive
+├── controller.js           # request/response mapping
+├── routes.js               # org-scoped router + public signed archive router
+└── schemas.js              # Zod input validation
 ```
 
 ## 3. The pipeline pattern
@@ -85,22 +96,46 @@ class AnthropicAdapter(ModelGateway): ...
   content is chunked and summarized before it ever reaches a model.
 - No API keys are exposed beyond the AI service environment.
 
-## 5. Repository ingestion
+## 5. Job intents & the signed archive flow
 
-1. Fetch repository content (tarball or per-file) from the API-provided
-   archive URL — never with GitHub credentials.
-2. Filter files (ignore `node_modules`, build output, binary files, VCS).
-3. Detect language and count files by extension.
-4. Parse dependency manifests and lockfiles.
-5. Emit a normalized **repository snapshot** (file map, dependencies,
-   entry points, package metadata) used by analysis and RAG.
+The API submits a **bounded job intent** — never repository contents in the
+request body:
+
+```json
+{
+  "job_id": "<uuid>",
+  "type": "architecture | code_review | docs | readme",
+  "organization_id": "<uuid>",
+  "repository_id": "<uuid>",
+  "archive_url": "http://localhost:4000/api/v1/ai/archive/<repoId>?token=<archive-token>",
+  "archive_token": "<archive-token>",
+  "payload": { "repository_name": "acme/web" }
+}
+```
+
+1. The API inserts a row into `ai_jobs` (`queued`), signs a short-lived
+   HMAC **job token** and POSTs the intent to `AI_SERVICE_URL/jobs/{jobId}`
+   with the `X-Devforge-Job-Token` header.
+2. The AI service verifies the token, then pulls the repository archive from
+   the signed `archive_url`. The API endpoint streams the GitHub tarball
+   (owner-connection token stays server-side, never passed on).
+3. The AI service ingests, analyzes and persists results into `ai_analyses`
+   and `ai_jobs` in the shared database; the API only reads them back.
+
+Token formats (HMAC-SHA256, base64url; identical in `apps/api/.../ai/tokens.js`
+and `apps/ai/app/auth.py`):
+
+```
+job token:     base64url(jobId) "." <exp ms> "." base64url(hmac("{jobId}.{exp}", secret))
+archive token: <exp ms> "." base64url(hmac("archive.{repoId}.{exp}", secret))
+```
 
 ## 6. Embeddings & RAG
 
 - Chunk repository files and docs into retrieval units with metadata
   (path, language, module).
 - Embed with a configured embedding provider; store in the vector store
-  (pgvector or dedicated store — see ADR-003).
+  (pgvector `ai_document_chunks`, `vector(1536)` with an HNSW index).
 - Retrieval: hybrid keyword + vector search scoped to a project/repo,
   with token-budgeted context assembly.
 
@@ -112,14 +147,16 @@ class AnthropicAdapter(ModelGateway): ...
 - **No secrets to models**: repository content is scanned and redacted for
   obvious secret patterns before ingestion.
 - **Never execute AI output.**
-- All inbound requests authenticated via API-signed job tokens.
+- All inbound requests authenticated via API-signed job tokens; archive
+  downloads require a separate signed archive token.
 
 ## 8. Testing
 
 - Unit: pipelines with mocked providers (pytest).
 - Integration: real provider calls behind a feature flag, against fixture
   repositories.
-- Contract tests for the API ↔ AI job protocol.
+- Contract tests for the API ↔ AI job protocol (`apps/ai/tests/test_auth.py`,
+  `apps/api/test/ai-tokens.test.js`, `apps/api/test/ai.test.js`).
 
 ---
 

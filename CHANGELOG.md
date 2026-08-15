@@ -292,3 +292,46 @@ Added:
 - Test counts: 163 API tests (14 files — 11 new realtime integration tests),
   50 web tests (8 new), 15 database tests.
 
+### Phase 8 — AI Foundation
+
+Added:
+
+- `apps/ai` FastAPI service (Python): pydantic-settings config, liveness +
+  readiness routers, a provider-agnostic model gateway (`providers/`) with
+  OpenAI, Anthropic and local adapters plus a deterministic offline
+  `hashing_embed` embedder, and pipeline orchestration
+  (`pipelines/ingest`, `pipelines/analysis`, `pipelines/scoring`).
+- Repository ingestion (`app/ingestion/`): tarball fetch with percent-decoded
+  paths, filter rules (ignores `node_modules`, build output, binaries, VCS),
+  per-extension language detection, dependency-manifest parsing, chunking,
+  secret scanning/redaction and a normalized repository snapshot.
+- Embeddings + vector search: migration `0010_ai_vectors` enables pgvector
+  (`ai_document_chunks` with a 1536-dim HNSW `vector_cosine_ops` index plus
+  content and repository-id indexes); hybrid keyword + vector retrieval with
+  token-budgeted context assembly (`app/context/`).
+- AI job contract: the API submits a bounded **job intent**
+  (`POST {AI_SERVICE_URL}/jobs/{jobId}` with an HMAC job token), the service
+  returns typed, Pydantic-validated results and updates `ai_jobs`; secret
+  redaction runs before any content reaches a model.
+- Node API orchestration (`apps/api/src/modules/ai/`): `createAnalysis`
+  (queues `ai_jobs`, signs job + archive tokens, submits the intent), job
+  status polling, analyses listing, and a **signed archive stream**
+  (`GET /api/v1/ai/archive/:repoId?token=…`) that streams the GitHub tarball
+  to the AI service so credentials never leave the API. Tokens
+  (`tokens.js`) mirror `apps/ai/app/auth.py` exactly (HMAC-SHA256, base64url,
+  expiring).
+- GitHub client tarball download (`downloadTarball` with default-branch and
+  slash-encoded refs) and service method `downloadRepositoryArchive`.
+- AI environment config (`AI_SERVICE_URL`, `AI_JOB_SECRET` with a production
+  explicit-secret guard, `AI_JOB_TTL_SECONDS`, `AI_ARCHIVE_TTL_SECONDS`) and
+  `.env.example` entries; root scripts `npm run ai:dev`, `npm run ai:test`,
+  `npm run ai:lint`.
+- CI: the Quality Gate now provisions `pgvector/pgvector:pg16`, installs the
+  AI service (`pip install -e "./apps/ai[dev]"`), runs `ruff check apps/ai`
+  and `pytest apps/ai` (with `AI_TEST_DATABASE_URL`).
+- Docker Compose postgres switched to the pgvector image.
+- Validator: secret-scan exempts intentional test fixtures via a marker
+  comment and skips `__pycache__`/`.pyc` files.
+- Test counts: 185 API tests (16 files — 19 new AI/archive tests), 92 AI
+  pytest tests (16 files), 50 web tests, 15 database tests.
+

@@ -8,14 +8,17 @@ DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 7 — Real-Time.** The web app and API run locally (`npm run dev`)
-> with authentication & RBAC, project management (kanban + roadmaps), GitHub
-> OAuth with encrypted tokens, repository import/sync, webhooks with signature
-> verification, an analytics dashboard (velocity, health, contributors,
-> developers and repository activity), and real-time collaboration —
-> notifications, presence, typing indicators, team chat and live task updates
-> over Socket.io. **228 passing tests** (163 API, 50 web, 15 database), shared
-> linting and a CI quality gate. Phase 8 (AI foundation) is next.
+> **Status: Phase 8 — AI Foundation.** The web app and API run locally
+> (`npm run dev`) with authentication & RBAC, project management (kanban +
+> roadmaps), GitHub OAuth with encrypted tokens, repository import/sync,
+> webhooks with signature verification, an analytics dashboard (velocity,
+> health, contributors, developers and repository activity), real-time
+> collaboration (notifications, presence, typing indicators, team chat and
+> live task updates), and an AI service (`apps/ai`) with a provider-agnostic
+> gateway, repository ingestion, secret redaction and pgvector RAG wired to
+> the API through a signed job contract. **342 passing tests** (185 API, 92
+> AI, 50 web, 15 database), shared linting and a CI quality gate. Phase 9
+> (AI features) is next.
 
 ---
 
@@ -83,7 +86,7 @@ a working state.
 | 4 | Project management ✅ |
 | 5 | GitHub integration ✅ |
 | 6 | Developer analytics ✅ |
-| 7 | Real-time collaboration |
+| 7 | Real-time collaboration ✅ |
 | 8 | AI foundation — AI service, provider abstraction, RAG |
 | 9 | AI features — analyzer, code review, docs, assistant |
 | 10 | DevOps — Docker, CI/CD, monitoring |
@@ -148,6 +151,9 @@ development, leave the `GITHUB_*` variables empty to run without the module.
 npm run dev         # API (:4000) and web (:5173) concurrently
 npm run dev:api     # API only
 npm run dev:web     # Web only
+npm run ai:dev      # AI service only (:5001, uvicorn with reload)
+npm run ai:test     # AI pytest suite
+npm run ai:lint     # AI ruff lint
 npm run db:migrate  # Apply database migrations (docker compose up -d postgres first)
 npm run db:seed     # Idempotent local seed data
 npm run db:down     # Roll back the last migration
