@@ -75,12 +75,12 @@ export function createGithubClient({
     throw new Error('createGithubClient requires a fetch implementation');
   }
 
-  async function request(method, path, { token, body, raw = false } = {}) {
+  async function request(method, path, { token, body, raw = false, accept = 'application/vnd.github+json' } = {}) {
     let attempt = 0;
     for (;;) {
       attempt += 1;
       const headers = {
-        Accept: 'application/vnd.github+json',
+        Accept: accept,
         'User-Agent': userAgent,
       };
       if (token) {
@@ -156,6 +156,12 @@ export function createGithubClient({
         'GET',
         buildUrl(`/repos/${encodeName(fullName)}/pulls`, { per_page: 100, state }),
         { token },
+      ),
+    getPullRequestDiff: ({ token, fullName, number }) =>
+      request(
+        'GET',
+        `/repos/${encodeName(fullName)}/pulls/${encodeURIComponent(number)}`,
+        { token, raw: true, accept: 'application/vnd.github.diff' },
       ),
     listIssues: ({ token, fullName, state = 'open' }) =>
       request('GET', buildUrl(`/repos/${encodeName(fullName)}/issues`, { per_page: 100, state }), { token }),

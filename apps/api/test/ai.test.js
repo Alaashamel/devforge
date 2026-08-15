@@ -11,6 +11,7 @@ import {
 import { addOrgMember, auth, createOrg, registerUser } from './modules/helpers.js';
 import { createAiService } from '../src/modules/ai/service.js';
 import { signArchiveToken, verifyJobToken } from '../src/modules/ai/tokens.js';
+import { notFound } from '../src/utils/errors.js';
 
 const AI_SECRET = 'devforge-test-ai-job-secret-000000000000';
 const NOW = () => new Date('2026-08-15T10:00:00.000Z');
@@ -30,6 +31,10 @@ function buildApp({ fetchImpl, github } = {}) {
         downloadRepositoryArchive: async () => ({
           repo: { full_name: 'acme/repo' },
           response: { body: Buffer.from('tarball-bytes') },
+        }),
+        downloadPullRequestDiff: async () => ({
+          repo: { full_name: 'acme/repo' },
+          diff: 'diff --git a/x b/x\n@@ -1,2 +1,3 @@\n+added\n-removed\n',
         }),
       },
     aiServiceUrl: 'http://localhost:5001',
@@ -207,12 +212,104 @@ describe('ai job submission', () => {
     const res = await request(app)
       .post(`/api/v1/organizations/${org.id}/ai/analyses`)
       .set(auth(owner.accessToken))
-      .send({ repositoryId: repo.id, type: 'code_review' });
+      .send({ repositoryId: repo.id, type: 'readme' });
 
     expect(res.status).toBe(502);
     const { rows } = await pool.query('SELECT * FROM ai_jobs ORDER BY created_at DESC LIMIT 1');
     expect(rows[0].status).toBe('failed');
     expect(rows[0].error).toBe('AI service rejected the job (HTTP 401)');
+  });
+
+  it('creates a code_review job from a pull request diff', async () => {
+    const { owner, org, repo } = await seed();
+    const diffDownload = vi.fn().mockResolvedValue({
+      repo: { full_name: 'acme/repo' },
+      diff: 'diff --git a/src/app.js b/src/app.js\n@@ -1,3 +1,4 @@\n+const ok = true;\n-const bad = false;\n',
+    });
+    buildApp({
+      github: {
+        downloadRepositoryArchive: async () => ({
+          repo: { full_name: 'acme/repo' },
+          response: { body: Buffer.from('tarball-bytes') },
+        }),
+        downloadPullRequestDiff: diffDownload,
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/analyses`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, type: 'code_review', pullRequestNumber: 7 });
+
+    expect(res.status).toBe(202);
+    expect(res.body).toMatchObject({ status: 'accepted', type: 'code_review' });
+    const { jobId } = res.body;
+
+    expect(diffDownload).toHaveBeenCalledWith({ orgId: org.id, repoId: repo.id, prNumber: 7 });
+
+    const { rows } = await pool.query('SELECT * FROM ai_jobs WHERE id = $1', [jobId]);
+    expect(rows[0]).toMatchObject({
+      organization_id: org.id,
+      repository_id: repo.id,
+      type: 'code_review',
+      status: 'queued',
+    });
+    expect(rows[0].payload).toMatchObject({
+      repository_name: 'repo',
+      pull_request_number: 7,
+    });
+    expect(rows[0].payload.diff).toContain('diff --git a/src/app.js');
+
+    expect(submitted).toHaveLength(1);
+    const body = JSON.parse(submitted[0].options.body);
+    expect(body).toMatchObject({
+      job_id: jobId,
+      type: 'code_review',
+      organization_id: org.id,
+      repository_id: repo.id,
+    });
+    expect(body.archive_url).toBeUndefined();
+    expect(body.archive_token).toBeUndefined();
+    expect(body.payload).toMatchObject({
+      repository_name: 'repo',
+      pull_request_number: 7,
+      diff: expect.stringContaining('diff --git'),
+    });
+  });
+
+  it('requires pullRequestNumber for code_review analyses', async () => {
+    const { owner, org, repo } = await seed();
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/analyses`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, type: 'code_review' });
+
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('VALIDATION_ERROR');
+  });
+
+  it('returns 404 when the pull request diff cannot be found', async () => {
+    const { owner, org, repo } = await seed();
+    buildApp({
+      github: {
+        downloadRepositoryArchive: async () => ({
+          repo: { full_name: 'acme/repo' },
+          response: { body: Buffer.from('tarball-bytes') },
+        }),
+        downloadPullRequestDiff: async () => {
+          throw notFound('Pull request #999 not found');
+        },
+      },
+    });
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/analyses`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, type: 'code_review', pullRequestNumber: 999 });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
 
@@ -300,6 +397,33 @@ describe('ai job status and analyses', () => {
       status: 'completed',
       score: { overall: 81 },
     });
+  });
+
+  it('filters analyses by type and pull request number', async () => {
+    const { owner, org, repo } = await seed();
+    const reviewId = 'dddddddd-dddd-4ddd-8ddd-dddddddddddd';
+    await pool.query(
+      `INSERT INTO ai_analyses (id, organization_id, repository_id, type, status, model, score, report)
+       VALUES ($1, $2, $3, 'code_review', 'completed', 'test-model', $4, $5)`,
+      [
+        reviewId,
+        org.id,
+        repo.id,
+        JSON.stringify({ score: 88 }),
+        JSON.stringify({ summary: 'ok', pull_request_number: 7 }),
+      ],
+    );
+
+    const res = await request(app)
+      .get(
+        `/api/v1/organizations/${org.id}/ai/analyses?repositoryId=${repo.id}&type=code_review&pullRequestNumber=7`,
+      )
+      .set(auth(owner.accessToken));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(1);
+    expect(res.body.data[0]).toMatchObject({ id: reviewId, type: 'code_review' });
+    expect(res.body.data[0].report).toMatchObject({ pull_request_number: 7 });
   });
 
   it('returns 404 for an analysis outside the organization', async () => {

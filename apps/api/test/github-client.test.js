@@ -131,6 +131,16 @@ describe('github client', () => {
     expect(response.status).toBe(200);
   });
 
+  it('fetches a pull request diff with the diff accept header', async () => {
+    const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ status: 200, body: 'diff --git a/x b/x\n' }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    const response = await client.getPullRequestDiff({ token: 't', fullName: 'a/b', number: 7 });
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://api.github.com/repos/a/b/pulls/7');
+    expect(options.headers.Accept).toBe('application/vnd.github.diff');
+    expect(await response.text()).toContain('diff --git');
+  });
+
   it('defaults the tarball ref to the repository default branch', async () => {
     const fetchImpl = vi.fn().mockResolvedValue(mockResponse({ status: 200, body: 'tar' }));
     const client = createGithubClient({ fetchImpl, apiUrl });

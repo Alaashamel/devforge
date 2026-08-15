@@ -66,13 +66,26 @@ export function createAiService({
     );
   }
 
-  async function createAnalysis({ orgId, repoId, type }) {
+  async function createAnalysis({ orgId, repoId, type, pullRequestNumber }) {
     const repo = await getRepoRow({ orgId, repoId });
     if (!repo) {
       throw notFound('Repository not found');
     }
-    const archiveToken = signArchiveToken(repo.id, jobSecret, archiveTokenTtlSeconds, now);
     const payload = { repository_name: repo.name };
+    let archiveToken = null;
+    let archiveUrl = null;
+    if (type === 'code_review') {
+      const { diff } = await github.downloadPullRequestDiff({
+        orgId,
+        repoId,
+        prNumber: pullRequestNumber,
+      });
+      payload.pull_request_number = pullRequestNumber;
+      payload.diff = diff;
+    } else {
+      archiveToken = signArchiveToken(repo.id, jobSecret, archiveTokenTtlSeconds, now);
+      archiveUrl = `${apiBaseUrl}/api/v1/ai/archive/${repo.id}?token=${encodeURIComponent(archiveToken)}`;
+    }
     const { rows } = await pool.query(
       `INSERT INTO ai_jobs (organization_id, repository_id, type, status, payload)
        VALUES ($1, $2, $3, 'queued', $4) RETURNING *`,
@@ -95,8 +108,7 @@ export function createAiService({
           organization_id: orgId,
           project_id: null,
           repository_id: repo.id,
-          archive_url: `${apiBaseUrl}/api/v1/ai/archive/${repo.id}?token=${encodeURIComponent(archiveToken)}`,
-          archive_token: archiveToken,
+          ...(archiveUrl ? { archive_url: archiveUrl, archive_token: archiveToken } : {}),
           payload,
         }),
       });
@@ -122,12 +134,20 @@ export function createAiService({
     return { data: mapJob(rows[0]) };
   }
 
-  async function listAnalyses({ orgId, repositoryId }) {
+  async function listAnalyses({ orgId, repositoryId, type, pullRequestNumber }) {
     const conditions = ['organization_id = $1'];
     const params = [orgId];
     if (repositoryId) {
       params.push(repositoryId);
       conditions.push(`repository_id = $${params.length}`);
+    }
+    if (type) {
+      params.push(type);
+      conditions.push(`type = $${params.length}`);
+    }
+    if (pullRequestNumber !== undefined && pullRequestNumber !== null && pullRequestNumber !== '') {
+      params.push(String(pullRequestNumber));
+      conditions.push(`report->>'pull_request_number' = $${params.length}`);
     }
     const { rows } = await pool.query(
       `SELECT * FROM ai_analyses

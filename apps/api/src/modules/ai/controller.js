@@ -7,6 +7,7 @@ export function createAiController(service) {
         orgId: req.params.orgId,
         repoId: req.body.repositoryId,
         type: req.body.type,
+        pullRequestNumber: req.body.pullRequestNumber,
       });
       res.status(202).json(result);
     },
@@ -15,6 +16,8 @@ export function createAiController(service) {
       const result = await service.listAnalyses({
         orgId: req.params.orgId,
         repositoryId: req.query.repositoryId,
+        type: req.query.type,
+        pullRequestNumber: req.query.pullRequestNumber,
       });
       res.json(result);
     },
