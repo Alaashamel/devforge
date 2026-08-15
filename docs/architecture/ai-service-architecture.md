@@ -14,9 +14,9 @@ Browser ──► API (apps/api)
                 ▼
            AI service (apps/ai)
                 │  POST /jobs/{jobId}          (X-Devforge-Job-Token)
-                │  GET  /api/v1/ai/archive/:repoId?token=…   (signed archive pull)
+                │  GET  /api/v1/ai/archive/:repoId?token=…   (signed archive pull, repo analyses)
                 ▼
-           Pipelines: ingestion · analysis · review · docs · assistant
+           Pipelines: ingestion · analysis · analyzer · review · docs · assistant
                 │  provider gateway (OpenAI / Anthropic / local …)
                 ▼
            Embeddings + vector store (RAG)
@@ -42,7 +42,7 @@ apps/ai/
 │   ├── models/            # Pydantic schemas (input/output contracts)
 │   ├── services/          # pipeline orchestration
 │   ├── providers/         # provider gateway + adapters
-│   ├── pipelines/         # ingestion, analysis, scoring
+│   ├── pipelines/         # ingestion, analysis, analyzer, review, scoring
 │   ├── context/           # retrieval, vector store, job store
 │   ├── ingestion/         # repo fetch, filtering, language detection
 │   └── config.py          # env config (pydantic-settings)
@@ -121,6 +121,13 @@ request body:
    (owner-connection token stays server-side, never passed on).
 3. The AI service ingests, analyzes and persists results into `ai_analyses`
    and `ai_jobs` in the shared database; the API only reads them back.
+
+The **code review** variant (`code_review`) skips the archive flow: the API
+fetches the pull request diff from GitHub (`application/vnd.github.diff`) and
+submits it inline in `payload.diff` (no `archive_url`/`archive_token`). The
+AI service reviews the diff, classifies findings by severity, computes a
+review score and persists `pull_request_number` + diff stats top-level in the
+report so the API can filter analyses per pull request.
 
 Token formats (HMAC-SHA256, base64url; identical in `apps/api/.../ai/tokens.js`
 and `apps/ai/app/auth.py`):

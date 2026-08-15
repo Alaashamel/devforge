@@ -125,7 +125,7 @@ needed) · 🧩 = small enough for a first-time contributor.
 | Issue | Type | Notes |
 | --- | --- | --- |
 | Repository analyzer (architecture/code/security/docs scores) | ai | ✅ done — `analyzer` type (migration 0011): 4 scored dimensions, strengths/risks/recommendations, run-and-poll report UI, PR #21 |
-| AI code review pipeline (severity classification) | ai | targets pull-request diffs |
+| AI code review pipeline (severity classification) | ai | ✅ done — `code_review` type: PR diff in job payload, severity-classified findings + review score, per-PR panel, PR #23 |
 | Documentation/README generator with preview-and-approve | ai | approve commits the draft to GitHub |
 | Engineering assistant (project-aware Q&A) | ai | streamed responses + persisted chat |
 | Prompt-injection defense review | security | 🔒 |
