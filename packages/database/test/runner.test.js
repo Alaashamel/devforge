@@ -27,6 +27,7 @@ const MIGRATION_NAMES = [
   '0008_github_unique_connection',
   '0009_chat',
   '0010_ai_vectors',
+  '0011_ai_analyzer_type',
 ];
 
 const EXPECTED_TABLES = [
@@ -144,22 +145,25 @@ describe('migration runner', () => {
 
   it('rolls back the last migration and re-applies it', async () => {
     const rolledBack = await migrateDown({ client, steps: 1 });
-    expect(rolledBack).toEqual(['0010_ai_vectors']);
+    expect(rolledBack).toEqual(['0011_ai_analyzer_type']);
 
-    const { rows: idx } = await client.query(`
-      SELECT 1 FROM pg_indexes
-      WHERE indexname = 'ai_document_chunks_embedding_hnsw_idx'
+    const { rows: check } = await client.query(`
+      SELECT pg_get_constraintdef(oid) AS def
+      FROM pg_constraint
+      WHERE conname = 'ai_analyses_type_check'
     `);
-    expect(idx).toHaveLength(0);
+    expect(check).toHaveLength(1);
+    expect(check[0].def).not.toContain('analyzer');
 
     const reapplied = await migrateUp({ client });
-    expect(reapplied).toEqual(['0010_ai_vectors']);
+    expect(reapplied).toEqual(['0011_ai_analyzer_type']);
 
-    const { rows: idxAfter } = await client.query(`
-      SELECT 1 FROM pg_indexes
-      WHERE indexname = 'ai_document_chunks_embedding_hnsw_idx'
+    const { rows: checkAfter } = await client.query(`
+      SELECT pg_get_constraintdef(oid) AS def
+      FROM pg_constraint
+      WHERE conname = 'ai_analyses_type_check'
     `);
-    expect(idxAfter).toHaveLength(1);
+    expect(checkAfter[0].def).toContain('analyzer');
   });
 });
 
@@ -208,10 +212,10 @@ export const down = async () => {};`,
 });
 
 describe('listMigrations helper', () => {
-  it('reports ten baseline migrations', () => {
+  it('reports eleven baseline migrations', () => {
     const migrations = listMigrations();
-    expect(migrations).toHaveLength(10);
+    expect(migrations).toHaveLength(11);
     expect(migrations[0].name).toBe('0001_identity');
-    expect(migrations[9].name).toBe('0010_ai_vectors');
+    expect(migrations[10].name).toBe('0011_ai_analyzer_type');
   });
 });

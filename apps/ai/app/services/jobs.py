@@ -10,7 +10,7 @@ from ..pipelines.analysis import AnalysisError, AnalysisPipeline
 from ..pipelines.ingest import IngestionError, IngestionPipeline
 from ..pipelines.scoring import score_snapshot
 
-ANALYSIS_TYPES = {"architecture", "code_review", "docs", "readme"}
+ANALYSIS_TYPES = {"analyzer", "architecture", "code_review", "docs", "readme"}
 
 
 class JobService:
@@ -51,7 +51,12 @@ class JobService:
             )
             context = self._top_file_context(snapshot)
             result, model = self.analysis.run(type_=intent.type, snapshot=summary, context=context)
-            result["score"] = score_snapshot(snapshot)
+            health = score_snapshot(snapshot)
+            if intent.type == "analyzer":
+                score = {"overall": result["overall"], "health": health}
+            else:
+                score = health
+                result["score"] = health
             result["repository"] = {
                 "name": summary["repository_name"],
                 "file_count": summary["file_count"],
@@ -63,7 +68,7 @@ class JobService:
                 repository_id=intent.repository_id,
                 type_=intent.type,
                 model=model,
-                score=result["score"],
+                score=score,
                 report=result,
             )
             self.job_store.finish(job_id, result=result, model=model)
