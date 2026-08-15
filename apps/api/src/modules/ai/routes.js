@@ -15,6 +15,7 @@ export function createAiRouter({ service, authorize }) {
     asyncHandler(controller.createAnalysis),
   );
   router.get('/analyses', authorize('project.view'), asyncHandler(controller.listAnalyses));
+  router.get('/analyses/:analysisId', authorize('project.view'), asyncHandler(controller.getAnalysis));
   router.get('/jobs/:jobId', authorize('project.view'), asyncHandler(controller.getJobStatus));
 
   return router;

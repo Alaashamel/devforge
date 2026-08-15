@@ -1,7 +1,7 @@
 import { AppError, externalServiceError, notFound } from '../../utils/errors.js';
 import { signArchiveToken, signJobToken, verifyArchiveToken } from './tokens.js';
 
-export const ANALYSIS_TYPES = ['architecture', 'code_review', 'docs', 'readme'];
+export const ANALYSIS_TYPES = ['analyzer', 'architecture', 'code_review', 'docs', 'readme'];
 
 function mapJob(job) {
   return {
@@ -139,6 +139,17 @@ export function createAiService({
     return { data: rows.map(mapAnalysis) };
   }
 
+  async function getAnalysis({ orgId, analysisId }) {
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_analyses WHERE id = $1 AND organization_id = $2',
+      [analysisId, orgId],
+    );
+    if (rows.length === 0) {
+      throw notFound('Analysis not found');
+    }
+    return { data: mapAnalysis(rows[0]) };
+  }
+
   async function streamArchive({ repoId, token }) {
     if (!verifyArchiveToken(repoId, token, jobSecret, archiveTokenTtlSeconds, now)) {
       throw new AppError('Invalid or expired archive token', {
@@ -159,5 +170,5 @@ export function createAiService({
     });
   }
 
-  return { createAnalysis, getJobStatus, listAnalyses, streamArchive };
+  return { createAnalysis, getJobStatus, listAnalyses, getAnalysis, streamArchive };
 }

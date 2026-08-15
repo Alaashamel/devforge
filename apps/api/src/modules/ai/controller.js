@@ -19,6 +19,14 @@ export function createAiController(service) {
       res.json(result);
     },
 
+    getAnalysis: async (req, res) => {
+      const result = await service.getAnalysis({
+        orgId: req.params.orgId,
+        analysisId: req.params.analysisId,
+      });
+      res.json(result);
+    },
+
     getJobStatus: async (req, res) => {
       const result = await service.getJobStatus({
         orgId: req.params.orgId,

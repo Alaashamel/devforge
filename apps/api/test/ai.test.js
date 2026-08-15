@@ -136,6 +136,20 @@ describe('ai job submission', () => {
     );
   });
 
+  it('accepts the analyzer type and signs a matching intent', async () => {
+    const { owner, org, repo } = await seed();
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/analyses`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, type: 'analyzer' });
+
+    expect(res.status).toBe(202);
+    expect(res.body).toMatchObject({ status: 'accepted', type: 'analyzer' });
+    expect(submitted).toHaveLength(1);
+    expect(JSON.parse(submitted[0].options.body).type).toBe('analyzer');
+  });
+
   it('rejects an invalid analysis type with a validation error', async () => {
     const { owner, org, repo } = await seed();
 
@@ -264,6 +278,39 @@ describe('ai job status and analyses', () => {
       model: 'test-model',
       score: { overall: 78 },
     });
+  });
+
+  it('returns a single analysis by id', async () => {
+    const { owner, org, repo } = await seed();
+    const analysisId = 'bbbbbbbb-bbbb-4bbb-8bbb-bbbbbbbbbbbb';
+    await pool.query(
+      `INSERT INTO ai_analyses (id, organization_id, repository_id, type, status, score, report)
+       VALUES ($1, $2, $3, 'analyzer', 'completed', $4, $5)`,
+      [analysisId, org.id, repo.id, JSON.stringify({ overall: 81 }), JSON.stringify({ summary: 'ok' })],
+    );
+
+    const res = await request(app)
+      .get(`/api/v1/organizations/${org.id}/ai/analyses/${analysisId}`)
+      .set(auth(owner.accessToken));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toMatchObject({
+      id: analysisId,
+      type: 'analyzer',
+      status: 'completed',
+      score: { overall: 81 },
+    });
+  });
+
+  it('returns 404 for an analysis outside the organization', async () => {
+    const { owner, org } = await seed();
+
+    const res = await request(app)
+      .get(`/api/v1/organizations/${org.id}/ai/analyses/cccccccc-cccc-4ccc-8ccc-cccccccccccc`)
+      .set(auth(owner.accessToken));
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
   });
 });
 
