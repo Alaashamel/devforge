@@ -393,6 +393,27 @@ describe('api client', () => {
     expect(JSON.parse(options.body)).toEqual({ repositoryId: 'r-1', type: 'analyzer' });
   });
 
+  it('posts a code_review analysis with the pull request number', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 202,
+      json: async () => ({ data: { jobId: 'j-2', status: 'accepted' } }),
+    });
+
+    await api.createAnalysis('org-1', {
+      repositoryId: 'r-1',
+      type: 'code_review',
+      pullRequestNumber: 7,
+    });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/ai/analyses');
+    expect(JSON.parse(options.body)).toEqual({
+      repositoryId: 'r-1',
+      type: 'code_review',
+      pullRequestNumber: 7,
+    });
+  });
+
   it('lists, reads and polls AI analyses and jobs from nested paths', async () => {
     globalThis.fetch = vi.fn().mockResolvedValue({
       ok: true,
@@ -405,13 +426,22 @@ describe('api client', () => {
       'http://localhost:4000/api/v1/organizations/org-1/ai/analyses?repositoryId=r-1',
     );
 
-    await api.getAnalysis('org-1', 'a-1');
+    await api.listAnalyses('org-1', {
+      repositoryId: 'r-1',
+      type: 'code_review',
+      pullRequestNumber: 7,
+    });
     expect(globalThis.fetch.mock.calls[1][0]).toBe(
+      'http://localhost:4000/api/v1/organizations/org-1/ai/analyses?repositoryId=r-1&type=code_review&pullRequestNumber=7',
+    );
+
+    await api.getAnalysis('org-1', 'a-1');
+    expect(globalThis.fetch.mock.calls[2][0]).toBe(
       'http://localhost:4000/api/v1/organizations/org-1/ai/analyses/a-1',
     );
 
     await api.getAiJobStatus('org-1', 'j-1');
-    expect(globalThis.fetch.mock.calls[2][0]).toBe(
+    expect(globalThis.fetch.mock.calls[3][0]).toBe(
       'http://localhost:4000/api/v1/organizations/org-1/ai/jobs/j-1',
     );
   });
