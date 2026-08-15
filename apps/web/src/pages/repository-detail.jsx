@@ -5,6 +5,7 @@ import { api } from '../services/api.js';
 import { useWorkspaceStore } from '../stores/workspace.js';
 import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '../components/form.jsx';
 import { AiAnalysisTab } from '../components/ai-analysis-tab.jsx';
+import { AiCodeReview } from '../components/ai-code-review.jsx';
 
 const stateTone = {
   open: 'text-green-400',
@@ -32,6 +33,7 @@ export function RepositoryDetail() {
   const [error, setError] = useState(null);
   const [notice, setNotice] = useState(null);
   const [branch, setBranch] = useState('');
+  const [openReviewPr, setOpenReviewPr] = useState(null);
 
   const [webhookEvents, setWebhookEvents] = useState(['push', 'pull_request']);
 
@@ -219,13 +221,27 @@ export function RepositoryDetail() {
         ) : (
           <ul className="space-y-2">
             {prsQuery.data.map((pr) => (
-              <li key={pr.id} className="flex flex-wrap items-center gap-3 rounded-lg border border-line bg-panel p-3 text-sm">
-                <span className={`font-mono text-xs ${stateTone[pr.state] ?? 'text-muted'}`}>#{pr.number}</span>
-                <span className="text-ink">{pr.title}</span>
-                <span className={`text-xs font-medium capitalize ${stateTone[pr.state] ?? 'text-muted'}`}>{pr.state}</span>
-                <span className="ml-auto text-xs text-muted">
-                  {pr.author ? pr.author : 'unknown'} · +{pr.additions} −{pr.deletions}
-                </span>
+              <li key={pr.id} className="rounded-lg border border-line bg-panel p-3 text-sm">
+                <div className="flex flex-wrap items-center gap-3">
+                  <span className={`font-mono text-xs ${stateTone[pr.state] ?? 'text-muted'}`}>#{pr.number}</span>
+                  <span className="text-ink">{pr.title}</span>
+                  <span className={`text-xs font-medium capitalize ${stateTone[pr.state] ?? 'text-muted'}`}>{pr.state}</span>
+                  <span className="ml-auto flex items-center gap-3 text-xs text-muted">
+                    {pr.author ? pr.author : 'unknown'} · +{pr.additions} −{pr.deletions}
+                    <button
+                      type="button"
+                      onClick={() => setOpenReviewPr(openReviewPr === pr.number ? null : pr.number)}
+                      className={openReviewPr === pr.number ? buttonClass : ghostButtonClass}
+                    >
+                      {openReviewPr === pr.number ? 'Close review' : 'AI review'}
+                    </button>
+                  </span>
+                </div>
+                {openReviewPr === pr.number ? (
+                  <div className="mt-3">
+                    <AiCodeReview orgId={orgId} repoId={repoId} prNumber={pr.number} />
+                  </div>
+                ) : null}
               </li>
             ))}
           </ul>

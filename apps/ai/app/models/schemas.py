@@ -56,3 +56,24 @@ class AnalyzerReport(BaseModel):
 
     summary: str
     dimensions: list[AnalyzerDimension] = Field(default_factory=list)
+
+
+REVIEW_SEVERITIES: tuple[str, ...] = ("critical", "high", "medium", "low", "info")
+
+
+class ReviewFinding(BaseModel):
+    """One finding of a pull request code review."""
+
+    severity: str
+    file: str = ""
+    line: int = Field(default=0, ge=0)
+    title: str = ""
+    description: str = ""
+    suggestion: str = ""
+
+
+class ReviewReport(BaseModel):
+    """Validated output of the pull request code review job."""
+
+    summary: str
+    findings: list[ReviewFinding] = Field(default_factory=list)

@@ -1,6 +1,7 @@
 """Deterministic heuristic scoring — code, not model output."""
 
 from ..ingestion.snapshot import RepositorySnapshot
+from ..models.schemas import REVIEW_SEVERITIES
 
 
 def score_snapshot(snapshot: RepositorySnapshot) -> dict:
@@ -36,3 +37,44 @@ def score_snapshot(snapshot: RepositorySnapshot) -> dict:
         add("code_volume", 5)
 
     return {"score": min(score, 100), "breakdown": breakdown, "max": 100}
+
+
+REVIEW_SEVERITY_PENALTY: dict[str, int] = {
+    "critical": 30,
+    "high": 15,
+    "medium": 6,
+    "low": 2,
+    "info": 0,
+}
+
+
+def review_score(counts: dict) -> dict:
+    """Score a code review from its severity counts (0-100, deterministic).
+
+    Each finding deducts a fixed penalty by severity so the same findings
+    always produce the same score regardless of model formatting choices.
+    """
+    penalty = sum(
+        REVIEW_SEVERITY_PENALTY.get(severity, 0) * int(counts.get(severity, 0) or 0)
+        for severity in REVIEW_SEVERITIES
+    )
+    return {
+        "score": max(0, min(100, 100 - penalty)),
+        "breakdown": counts,
+        "max": 100,
+    }
+
+
+def diff_stats(diff: str) -> dict:
+    """Count changed files and +/- lines from a unified diff (best effort)."""
+    files = additions = deletions = 0
+    for line in diff.splitlines():
+        if line.startswith("diff --git "):
+            files += 1
+        elif line.startswith("@@ ") or line.startswith("+++") or line.startswith("---"):
+            continue
+        elif line.startswith("+"):
+            additions += 1
+        elif line.startswith("-"):
+            deletions += 1
+    return {"files_changed": files, "additions": additions, "deletions": deletions}

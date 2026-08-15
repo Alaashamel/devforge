@@ -463,6 +463,34 @@ export function createGithubService({
     return { repo, response };
   }
 
+  async function downloadPullRequestDiff({ orgId, repoId, prNumber }) {
+    const repo = await assertRepo({ orgId, repoId });
+    const { rows } = await pool.query('SELECT owner_id FROM organizations WHERE id = $1', [orgId]);
+    if (rows.length === 0) {
+      throw notFound('Organization not found');
+    }
+    let response;
+    try {
+      response = await withToken(rows[0].owner_id, (token) =>
+        client.getPullRequestDiff({
+          token,
+          fullName: repo.full_name,
+          number: prNumber,
+        }),
+      );
+    } catch (err) {
+      if (err instanceof GithubApiError && err.status === 404) {
+        throw notFound(`Pull request #${prNumber} not found`);
+      }
+      if (err instanceof GithubApiError) {
+        throw externalServiceError(`Failed to fetch pull request #${prNumber} diff`, null, err);
+      }
+      throw err;
+    }
+    const diff = await response.text().catch(() => null);
+    return { repo, diff };
+  }
+
   async function listPullRequests({ orgId, repoId, query }) {
     await assertRepo({ orgId, repoId });
     const { page, pageSize } = parsePagination(query);
@@ -674,6 +702,7 @@ export function createGithubService({
     getRepository,
     removeRepository,
     downloadRepositoryArchive,
+    downloadPullRequestDiff,
     listPullRequests,
     listBranches,
     listCommits,

@@ -5,7 +5,12 @@ import json
 from pydantic import ValidationError
 
 from ..config import Settings
-from ..models.schemas import ANALYZER_DIMENSION_KEYS, AnalyzerReport
+from ..models.schemas import (
+    ANALYZER_DIMENSION_KEYS,
+    REVIEW_SEVERITIES,
+    AnalyzerReport,
+    ReviewReport,
+)
 from ..providers.base import CompletionError, CompletionRequest
 from ..providers.gateway import Gateway
 
@@ -55,10 +60,10 @@ _PROMPTS = {
         "}}\nReturn ONLY valid JSON, no markdown fences."
     ),
     "code_review": (
-        "You are a meticulous code reviewer. Review the files below and report concrete findings "
-        "with severity, location and a suggested fix. Only report findings you can back with the "
-        "provided code.\n\n"
-        "<untrusted>\n{snapshot}\n\nFile excerpts:\n{context or no excerpts}\n</untrusted>\n\n"
+        "You are a meticulous code reviewer. Review the pull request diff below and report "
+        "concrete findings with severity, location and a suggested fix. Only report findings "
+        "you can back with the provided diff.\n\n"
+        "<untrusted>\n{snapshot}\n\nPull request diff:\n{context}\n</untrusted>\n\n"
         "Required JSON schema:\n"
         "{{\n"
         '  "summary": "brief review summary",\n'
@@ -151,22 +156,65 @@ def validate_analyzer_report(data: dict) -> dict:
     return {"summary": report.summary, "dimensions": dimensions, "overall": overall}
 
 
+def validate_code_review_report(data: dict) -> dict:
+    """Normalize and validate code review output; derive severity counts.
+
+    Findings are ordered deterministically (severity, then file, then line) so
+    the rendered review never depends on model formatting choices.
+    """
+    report = ReviewReport.model_validate(data)
+    findings = []
+    for finding in report.findings:
+        severity = finding.severity.lower()
+        if severity not in REVIEW_SEVERITIES:
+            raise ValueError(f"unknown review severity: {finding.severity}")
+        findings.append(
+            {
+                "severity": severity,
+                "file": finding.file,
+                "line": finding.line,
+                "title": finding.title,
+                "description": finding.description,
+                "suggestion": finding.suggestion,
+            }
+        )
+    findings.sort(
+        key=lambda f: (REVIEW_SEVERITIES.index(f["severity"]), f["file"], f["line"])
+    )
+    severity_counts = {
+        severity: sum(1 for f in findings if f["severity"] == severity)
+        for severity in REVIEW_SEVERITIES
+    }
+    severity_counts = {
+        severity: count for severity, count in severity_counts.items() if count > 0
+    }
+    return {
+        "summary": report.summary,
+        "findings": findings,
+        "severity_counts": severity_counts,
+    }
+
+
 def _summary_block(snapshot: dict) -> str:
-    languages = snapshot.get("languages", {})
-    rendered = (
-        ", ".join(f"{name} ({count})" for name, count in sorted(languages.items()))
-        or "none detected"
-    )
-    return "\n".join(
-        [
-            f"Repository: {snapshot.get('repository_name') or 'unknown'}",
-            f"Files: {snapshot.get('file_count', 0)}",
-            f"Lines: {snapshot.get('total_lines', 0)}",
-            f"Languages: {rendered}",
-            f"Dependencies: {snapshot.get('dependency_count', 0)}",
-            f"Secrets redacted: {snapshot.get('secrets_redacted', 0)}",
-        ]
-    )
+    lines = [f"Repository: {snapshot.get('repository_name') or 'unknown'}"]
+    pr_number = snapshot.get("pull_request_number")
+    if pr_number is not None:
+        lines.append(f"Pull request: #{pr_number}")
+        lines.append(f"Files changed: {snapshot.get('files_changed', 0)}")
+        lines.append(f"Additions: {snapshot.get('additions', 0)}")
+        lines.append(f"Deletions: {snapshot.get('deletions', 0)}")
+    else:
+        languages = snapshot.get("languages", {})
+        rendered = (
+            ", ".join(f"{name} ({count})" for name, count in sorted(languages.items()))
+            or "none detected"
+        )
+        lines.append(f"Files: {snapshot.get('file_count', 0)}")
+        lines.append(f"Lines: {snapshot.get('total_lines', 0)}")
+        lines.append(f"Languages: {rendered}")
+        lines.append(f"Dependencies: {snapshot.get('dependency_count', 0)}")
+        lines.append(f"Secrets redacted: {snapshot.get('secrets_redacted', 0)}")
+    return "\n".join(lines)
 
 
 class AnalysisPipeline:
@@ -201,4 +249,9 @@ class AnalysisPipeline:
                 parsed = validate_analyzer_report(parsed)
             except (ValidationError, ValueError) as exc:
                 raise AnalysisError(f"model returned an invalid analyzer report: {exc}") from exc
+        elif type_ == "code_review":
+            try:
+                parsed = validate_code_review_report(parsed)
+            except (ValidationError, ValueError) as exc:
+                raise AnalysisError(f"model returned an invalid code review report: {exc}") from exc
         return parsed, result.model
