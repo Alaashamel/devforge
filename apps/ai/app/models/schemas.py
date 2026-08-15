@@ -29,3 +29,30 @@ class JobResult(BaseModel):
     result: dict[str, Any] = Field(default_factory=dict)
     error: str | None = None
     model: str | None = None
+
+
+ANALYZER_DIMENSION_KEYS: tuple[str, ...] = (
+    "architecture",
+    "code_quality",
+    "security",
+    "documentation",
+)
+
+
+class AnalyzerDimension(BaseModel):
+    """One scored dimension of a repository analysis."""
+
+    key: str
+    label: str = ""
+    score: int = Field(ge=0, le=100)
+    summary: str = ""
+    strengths: list[str] = Field(default_factory=list)
+    risks: list[str] = Field(default_factory=list)
+    recommendations: list[str] = Field(default_factory=list)
+
+
+class AnalyzerReport(BaseModel):
+    """Validated output of the repository analyzer job."""
+
+    summary: str
+    dimensions: list[AnalyzerDimension] = Field(default_factory=list)

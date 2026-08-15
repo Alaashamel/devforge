@@ -1,8 +1,11 @@
-"""Analysis pipelines: architecture, code review, docs, readme."""
+"""Analysis pipelines: analyzer, architecture, code review, docs, readme."""
 
 import json
 
+from pydantic import ValidationError
+
 from ..config import Settings
+from ..models.schemas import ANALYZER_DIMENSION_KEYS, AnalyzerReport
 from ..providers.base import CompletionError, CompletionRequest
 from ..providers.gateway import Gateway
 
@@ -13,6 +16,28 @@ _SYSTEM_INSULATION = (
 )
 
 _PROMPTS = {
+    "analyzer": (
+        "You are a senior software architect performing a repository health assessment. "
+        "Analyze the repository below and score each of four dimensions from 0 to 100, where "
+        "100 is excellent. Base every score and claim on the provided data; if evidence is "
+        "missing, lower the score and say why instead of inventing findings.\n\n"
+        "<untrusted>\n{snapshot}\n\nFile excerpts:\n{context}\n</untrusted>\n\n"
+        "Required JSON schema:\n"
+        "{{\n"
+        '  "summary": "2-4 sentence overview of the codebase",\n'
+        '  "dimensions": [{{\n'
+        '    "key": "architecture | code_quality | security | documentation",\n'
+        '    "label": "human readable name",\n'
+        '    "score": 0,\n'
+        '    "summary": "1-2 sentences on how this dimension was assessed",\n'
+        '    "strengths": ["notable strengths"],\n'
+        '    "risks": ["risks or concerns"],\n'
+        '    "recommendations": ["prioritized, actionable recommendations"]\n'
+        "  }}]\n"
+        "}}\n"
+        "Exactly four dimensions are required: architecture, code_quality, security, "
+        "documentation. Return ONLY valid JSON, no markdown fences."
+    ),
     "architecture": (
         "You are a senior software architect. Analyze the repository below and produce a JSON "
         "object matching the required schema. Base every claim on the provided data; if evidence "
@@ -91,6 +116,41 @@ def parse_json_output(text: str) -> dict:
     return parsed
 
 
+def validate_analyzer_report(data: dict) -> dict:
+    """Normalize and validate analyzer output; derive the overall score.
+
+    Dimension scores come from the model but the overall score is computed
+    deterministically as their mean, so a single authoritative number never
+    depends on model formatting choices.
+    """
+    report = AnalyzerReport.model_validate(data)
+    by_key = {d.key: d for d in report.dimensions}
+    missing = [key for key in ANALYZER_DIMENSION_KEYS if key not in by_key]
+    if missing:
+        raise ValueError(f"analyzer report missing dimensions: {', '.join(missing)}")
+    unknown = [key for key in by_key if key not in set(ANALYZER_DIMENSION_KEYS)]
+    if unknown:
+        raise ValueError(f"analyzer report has unknown dimensions: {', '.join(unknown)}")
+
+    dimensions = []
+    for key in ANALYZER_DIMENSION_KEYS:
+        dimension = by_key[key]
+        dimensions.append(
+            {
+                "key": dimension.key,
+                "label": dimension.label or dimension.key.replace("_", " ").title(),
+                "score": dimension.score,
+                "summary": dimension.summary,
+                "strengths": dimension.strengths,
+                "risks": dimension.risks,
+                "recommendations": dimension.recommendations,
+            }
+        )
+
+    overall = round(sum(d["score"] for d in dimensions) / len(dimensions))
+    return {"summary": report.summary, "dimensions": dimensions, "overall": overall}
+
+
 def _summary_block(snapshot: dict) -> str:
     languages = snapshot.get("languages", {})
     rendered = (
@@ -136,4 +196,9 @@ class AnalysisPipeline:
             parsed = parse_json_output(result.text)
         except (json.JSONDecodeError, ValueError) as exc:
             raise AnalysisError("model returned malformed JSON") from exc
+        if type_ == "analyzer":
+            try:
+                parsed = validate_analyzer_report(parsed)
+            except (ValidationError, ValueError) as exc:
+                raise AnalysisError(f"model returned an invalid analyzer report: {exc}") from exc
         return parsed, result.model
