@@ -14,9 +14,11 @@ jobs:
       DATABASE_URL: postgres://devforge:devforge@localhost:5432/devforge_test
       # Used by the auth integration tests (defaults to localhost:5433 locally).
       AUTH_TEST_DATABASE_URL: postgres://devforge:devforge@localhost:5432/devforge_test
+      # Used by the AI service pgvector integration tests (skipped when unset).
+      AI_TEST_DATABASE_URL: postgres://devforge:devforge@localhost:5432/devforge_test
     services:
       postgres:
-        image: postgres:16-alpine
+        image: pgvector/pgvector:pg16
         env:
           POSTGRES_USER: devforge
           POSTGRES_PASSWORD: devforge
@@ -38,8 +40,16 @@ jobs:
           node-version: '20'
           cache: npm
 
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.13'
+
       - name: Install dependencies
         run: npm ci
+
+      - name: Install AI service dependencies
+        run: python -m pip install -e "./apps/ai[dev]"
 
       - name: Validate repository structure and secrets
         run: npm run validate
@@ -47,8 +57,14 @@ jobs:
       - name: Lint
         run: npm run lint
 
+      - name: Lint AI service
+        run: ruff check apps/ai
+
       - name: Test
         run: npm test
+
+      - name: Test AI service
+        run: pytest apps/ai
 
       - name: Build
         run: npm run build
