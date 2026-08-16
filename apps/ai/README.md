@@ -24,7 +24,7 @@ app/
 ├── pipelines/         # ingest, analysis, analyzer, review, scoring orchestration
 ├── services/          # job orchestration
 └── routers/           # health, jobs
-tests/                 # pytest suite (109 tests)
+tests/                 # pytest suite (125 tests)
 ```
 
 ## Job contract
@@ -41,6 +41,9 @@ typed, validated results:
 - `code_review` jobs carry the pull request diff inline in `payload.diff`
   (no archive download/ingestion) and persist `pull_request_number` +
   `files_changed`/`additions`/`deletions` + a review `score` in the report.
+- `docs`/`readme` jobs run the standard archive flow and return validated
+  markdown drafts (`{summary, files:[{path, content, note}]}`); the API
+  commits a draft only after the user approves it (GitHub Contents API).
 
 Token formats are mirrored in
 `apps/api/src/modules/ai/tokens.js` (Node) and `app/auth.py` (Python).

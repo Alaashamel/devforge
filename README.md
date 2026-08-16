@@ -16,12 +16,13 @@ cohesive workspace for software teams.
 > collaboration (notifications, presence, typing indicators, team chat and
 > live task updates), and an AI service (`apps/ai`) with a provider-agnostic
 > gateway, repository ingestion, secret redaction and pgvector RAG wired to
-> the API through a signed job contract. **383 passing tests** (193 API, 109
-> AI, 66 web, 15 database), shared linting and a CI quality gate. Phase 9
+> the API through a signed job contract. **419 passing tests** (203 API, 125
+> AI, 76 web, 15 database), shared linting and a CI quality gate. Phase 9
 > (AI features) is underway: the repository analyzer (health scores across
-> architecture, code quality, security and documentation) and the pull
-> request code review (severity-classified findings with a review score) are
-> live; docs/README generation and the engineering assistant are next.
+> architecture, code quality, security and documentation), the pull request
+> code review (severity-classified findings with a review score) and the
+> docs/README generator (preview-and-approve, approving commits the draft to
+> GitHub) are live; the engineering assistant is next.
 
 ---
 

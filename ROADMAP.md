@@ -128,7 +128,8 @@ Deliverables:
       strengths/risks/recommendations, run-and-poll UI).
 - [x] AI Code Review of pull request diffs with severity classification
       (findings, review score and run-and-poll per-PR UI).
-- [ ] AI Documentation / README generator with preview-and-approve.
+- [x] AI Documentation / README generator with preview-and-approve
+      (approving a draft commits it to GitHub).
 - [ ] AI Engineering Assistant grounded in repository context.
 
 ## Phase 10 — DevOps
