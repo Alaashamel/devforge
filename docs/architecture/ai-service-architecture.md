@@ -51,7 +51,7 @@ apps/ai/
 
 apps/api/src/modules/ai/    # API-side orchestration
 ├── tokens.js               # HMAC job/archive tokens (mirrors app/auth.py)
-├── service.js              # createAnalysis · getAnalysis · getJobStatus · listAnalyses · streamArchive
+├── service.js              # createAnalysis · getAnalysis · getJobStatus · listAnalyses · approveAnalysis · streamArchive
 ├── controller.js           # request/response mapping
 ├── routes.js               # org-scoped router + public signed archive router
 └── schemas.js              # Zod input validation
@@ -128,6 +128,15 @@ submits it inline in `payload.diff` (no `archive_url`/`archive_token`). The
 AI service reviews the diff, classifies findings by severity, computes a
 review score and persists `pull_request_number` + diff stats top-level in the
 report so the API can filter analyses per pull request.
+
+The **docs/README** variants (`docs`, `readme`) use the standard archive flow
+and return drafts as `{summary, files:[{path, content, note}]}`. The AI
+service validates each draft (`.md` files only, canonical paths, exactly one
+`README.md` for readme, `docs/` prefix for docs). The API never writes them
+to the repository automatically: the user previews the draft and approves a
+specific file, at which point the API commits it through the GitHub Contents
+API (create or update, reusing the existing file's `sha`) and records the
+approval in `report.approvals`.
 
 Token formats (HMAC-SHA256, base64url; identical in `apps/api/.../ai/tokens.js`
 and `apps/ai/app/auth.py`):

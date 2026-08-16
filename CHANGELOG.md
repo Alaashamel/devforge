@@ -377,4 +377,21 @@ Added:
 - Test counts: 193 API tests (16 files), 109 AI pytest tests (19 files),
   66 web tests (9 files — new `ai-code-review.test.jsx`), 15 database tests
   (runner rollback covers migration `0011`).
+- AI Documentation/README generator: new `docs` and `readme` analysis types
+  emit validated markdown files (`{summary, files:[{path, content, note}]}`).
+  The AI service validates drafts in `validate_docs_report` — `.md` only, no
+  absolute/relative paths, exactly one `README.md` for readme, `docs/`
+  prefix for docs, deterministic ordering — and persists `repository` meta
+  (name, file_count, languages) plus a per-file `score`.
+- Node API: `POST /organizations/:orgId/ai/analyses/:analysisId/approve`
+  commits a generated file to GitHub via the Contents API (`getFile` +
+  `createOrUpdateFile` in the GitHub client, upserting with the existing
+  file's `sha`). Approvals are recorded in `report.approvals` and rejected
+  when the type isn't docs/readme (400) or the path isn't in the report
+  (400); out-of-date commits map to 409.
+- Web: "docs" tab on the repository detail page (`ai-docs-tab.jsx`) — README
+  vs docs toggle, run-and-poll generation, draft previews with per-file
+  Approve & commit actions that disappear once committed.
+- Test counts: 203 API tests (16 files), 125 AI pytest tests (20 files),
+  76 web tests (10 files — new `ai-docs-tab.test.jsx`), 15 database tests.
 
