@@ -21,10 +21,10 @@ app/
 ├── providers/         # provider gateway + OpenAI/Anthropic/local adapters
 ├── ingestion/         # fetch, filter, languages, manifests, chunk, redact, snapshot
 ├── context/           # vector store (pgvector), job store, retrieval
-├── pipelines/         # ingest, analysis, analyzer, review, scoring orchestration
+├── pipelines/         # ingest, analysis, analyzer, review, scoring, assistant
 ├── services/          # job orchestration
-└── routers/           # health, jobs
-tests/                 # pytest suite (125 tests)
+└── routers/           # health, jobs, assistant
+tests/                 # pytest suite (146 tests)
 ```
 
 ## Job contract
@@ -44,6 +44,17 @@ typed, validated results:
 - `docs`/`readme` jobs run the standard archive flow and return validated
   markdown drafts (`{summary, files:[{path, content, note}]}`); the API
   commits a draft only after the user approves it (GitHub Contents API).
+
+The **assistant** is a streamed, stateless endpoint instead of a job:
+
+- `POST /assistant/stream` with the same `X-Devforge-Job-Token` header (id
+  `assistant`); body is `{conversation_id, organization_id, repository_id,
+  repository_name, messages}`.
+- It hybrid-retrieves only that repository's indexed chunks, wraps them in
+  `<untrusted>…</untrusted>` as data-only context, truncates history to the
+  last 20 messages and streams Server-Sent Events: `sources` → repeated
+  `delta` → `done` (or a single `error`).
+- The API persists messages and sources; the service stays stateless.
 
 Token formats are mirrored in
 `apps/api/src/modules/ai/tokens.js` (Node) and `app/auth.py` (Python).

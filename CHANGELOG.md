@@ -394,4 +394,24 @@ Added:
   Approve & commit actions that disappear once committed.
 - Test counts: 203 API tests (16 files), 125 AI pytest tests (20 files),
   76 web tests (10 files — new `ai-docs-tab.test.jsx`), 15 database tests.
+- AI Engineering Assistant: migration `0012_ai_assistant_conversations`
+  scopes conversations to a repository (`ai_conversations.repository_id`,
+  cascade delete + index). The AI service adds streaming to the provider
+  gateway and the OpenAI/Anthropic/local adapters (SSE delta parsing) and a
+  stateless assistant pipeline (`pipelines/assistant.py`) that hybrid-
+  retrieves a single repository's chunks, insulates excerpts as
+  `<untrusted>` data and streams replies via `POST /assistant/stream` (HMAC
+  job token) with `sources` / `delta` / `done` / `error` SSE events.
+- Node API: repository-scoped conversation CRUD (`GET/POST/DELETE
+  /ai/conversations`, `GET /ai/conversations/:id/messages`) and
+  `POST /ai/conversations/:id/stream`, which persists the user message,
+  relays full history to the AI service, streams SSE deltas back and
+  persists the assistant reply with its `sources` only on success.
+- Web: "assistant" tab on the repository detail page (`ai-assistant-tab.jsx`)
+  — conversation list (new/delete), message thread with source chips, and a
+  live-streaming reply box that renders deltas as they arrive.
+- Test counts: 216 API tests (16 files), 146 AI pytest tests (21 files —
+  new `test_assistant.py`), 84 web tests (11 files — new
+  `ai-assistant-tab.test.jsx`), 15 database tests (runner covers migration
+  `0012`).
 
