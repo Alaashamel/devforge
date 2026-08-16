@@ -491,6 +491,43 @@ export function createGithubService({
     return { repo, diff };
   }
 
+  async function commitGeneratedFile({ orgId, repoId, path, content, message }) {
+    const repo = await assertRepo({ orgId, repoId });
+    const { rows } = await pool.query('SELECT owner_id FROM organizations WHERE id = $1', [orgId]);
+    if (rows.length === 0) {
+      throw notFound('Organization not found');
+    }
+    return withToken(rows[0].owner_id, async (token) => {
+      let existingSha = null;
+      try {
+        const existing = await client.getFile({ token, fullName: repo.full_name, path });
+        existingSha = existing?.sha ?? null;
+      } catch (err) {
+        if (err instanceof GithubApiError && err.status === 404) {
+          existingSha = null;
+        } else {
+          throw externalServiceError(`Failed to inspect ${path} on GitHub`, null, err);
+        }
+      }
+      try {
+        const created = await client.createOrUpdateFile({
+          token,
+          fullName: repo.full_name,
+          path,
+          message,
+          content: Buffer.from(content, 'utf8').toString('base64'),
+          sha: existingSha,
+        });
+        return { path, sha: created?.content?.sha ?? null, committed: true };
+      } catch (err) {
+        if (err instanceof GithubApiError && err.status === 422) {
+          throw conflict(`Could not commit ${path} — it may have changed on GitHub`);
+        }
+        throw externalServiceError(`Failed to commit ${path}`, null, err);
+      }
+    });
+  }
+
   async function listPullRequests({ orgId, repoId, query }) {
     await assertRepo({ orgId, repoId });
     const { page, pageSize } = parsePagination(query);
@@ -703,6 +740,7 @@ export function createGithubService({
     removeRepository,
     downloadRepositoryArchive,
     downloadPullRequestDiff,
+    commitGeneratedFile,
     listPullRequests,
     listBranches,
     listCommits,

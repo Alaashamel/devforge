@@ -20,3 +20,10 @@ export const createAnalysisSchema = z
       });
     }
   });
+
+export const approveAnalysisSchema = z
+  .object({
+    filePath: z.string().min(1, 'filePath is required').max(255, 'filePath is too long'),
+    message: z.string().max(200, 'message is too long').optional(),
+  })
+  .strict();
