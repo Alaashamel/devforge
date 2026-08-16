@@ -9,6 +9,7 @@ from ..models.schemas import (
     ANALYZER_DIMENSION_KEYS,
     REVIEW_SEVERITIES,
     AnalyzerReport,
+    DocsReport,
     ReviewReport,
 )
 from ..providers.base import CompletionError, CompletionRequest
@@ -78,24 +79,36 @@ _PROMPTS = {
         "}}\nReturn ONLY valid JSON, no markdown fences."
     ),
     "docs": (
-        "You are a technical writer. Produce a documentation outline for the repository below "
-        "grounded in its actual structure.\n\n"
-        "<untrusted>\n{snapshot}\n</untrusted>\n\n"
+        "You are a technical writer. Produce a documentation set for the repository below "
+        "grounded in its actual structure. Create concise, accurate markdown files under a "
+        "'docs/' directory — for example docs/architecture.md, docs/api.md, "
+        "docs/setup-guide.md and docs/changelog.md — sized to the repository. Skip files "
+        "that are not relevant and never invent features.\n\n"
+        "<untrusted>\n{snapshot}\n\nFile excerpts:\n{context}\n</untrusted>\n\n"
         "Required JSON schema:\n"
         "{{\n"
-        '  "overview": "what the project does",\n'
-        '  "getting_started": "how to run it",\n'
-        '  "sections": [{{"title": "section title", "content": "section body"}}]\n'
+        '  "summary": "one sentence describing what was generated",\n'
+        '  "files": [{{\n'
+        '    "path": "docs/architecture.md",\n'
+        '    "content": "full markdown file content",\n'
+        '    "note": "optional one-line note"\n'
+        "  }}]\n"
         "}}\nReturn ONLY valid JSON, no markdown fences."
     ),
     "readme": (
-        "You are a technical writer. Draft a README for the repository below grounded in its "
-        "actual structure.\n\n"
-        "<untrusted>\n{snapshot}\n</untrusted>\n\n"
+        "You are a technical writer. Draft a README.md for the repository below grounded "
+        "in its actual structure: a clear title and tagline, what it does, key features, "
+        "getting started, project layout and notes. Never invent features that are not "
+        "supported by the provided data.\n\n"
+        "<untrusted>\n{snapshot}\n\nFile excerpts:\n{context}\n</untrusted>\n\n"
         "Required JSON schema:\n"
         "{{\n"
-        '  "readme": "full markdown README draft",\n'
-        '  "summary": "one sentence summary of the project"\n'
+        '  "summary": "one sentence summary of the project",\n'
+        '  "files": [{{\n'
+        '    "path": "README.md",\n'
+        '    "content": "full markdown README draft",\n'
+        '    "note": "optional one-line note"\n'
+        "  }}]\n"
         "}}\nReturn ONLY valid JSON, no markdown fences."
     ),
 }
@@ -195,6 +208,37 @@ def validate_code_review_report(data: dict) -> dict:
     }
 
 
+def validate_docs_report(data: dict, type_: str) -> dict:
+    """Normalize and validate docs/readme output; enforce expected paths.
+
+    Generated files become markdown drafts that the user explicitly approves
+    before anything is written to GitHub, so paths are validated to be
+    repo-relative and the file set is constrained per type.
+    """
+    report = DocsReport.model_validate(data)
+    files = []
+    for file_ in report.files:
+        path = file_.path.strip().lstrip("/")
+        if not path.endswith(".md"):
+            raise ValueError(f"generated file is not markdown: {file_.path}")
+        if "\\" in path:
+            raise ValueError(f"generated file path must use forward slashes: {file_.path}")
+        segments = path.split("/")
+        if any(segment in ("", ".", "..") for segment in segments):
+            raise ValueError(f"generated file path is not repo-relative: {file_.path}")
+        files.append({"path": path, "content": file_.content, "note": file_.note})
+    if not files:
+        raise ValueError("generated report contains no files")
+    paths = {file["path"] for file in files}
+    if type_ == "readme":
+        if paths != {"README.md"}:
+            raise ValueError("readme report must contain exactly one file: README.md")
+    elif any(not path.startswith("docs/") for path in paths):
+        raise ValueError("docs report files must live under docs/")
+    files.sort(key=lambda file: (not file["path"].startswith("docs/"), file["path"]))
+    return {"summary": report.summary, "files": files}
+
+
 def _summary_block(snapshot: dict) -> str:
     lines = [f"Repository: {snapshot.get('repository_name') or 'unknown'}"]
     pr_number = snapshot.get("pull_request_number")
@@ -233,7 +277,7 @@ class AnalysisPipeline:
             system=_SYSTEM_INSULATION,
             messages=[{"role": "user", "content": instruction}],
             temperature=0.2,
-            max_tokens=2500,
+            max_tokens=4000 if type_ in ("docs", "readme") else 2500,
             json_mode=True,
         )
         try:
@@ -254,4 +298,9 @@ class AnalysisPipeline:
                 parsed = validate_code_review_report(parsed)
             except (ValidationError, ValueError) as exc:
                 raise AnalysisError(f"model returned an invalid code review report: {exc}") from exc
+        elif type_ in ("docs", "readme"):
+            try:
+                parsed = validate_docs_report(parsed, type_)
+            except (ValidationError, ValueError) as exc:
+                raise AnalysisError(f"model returned an invalid {type_} report: {exc}") from exc
         return parsed, result.model

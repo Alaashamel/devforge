@@ -2,7 +2,7 @@ import { Router } from 'express';
 import { asyncHandler } from '../../utils/async-handler.js';
 import { validate } from '../../utils/validate.js';
 import { createAiController } from './controller.js';
-import { createAnalysisSchema } from './schemas.js';
+import { approveAnalysisSchema, createAnalysisSchema } from './schemas.js';
 
 export function createAiRouter({ service, authorize }) {
   const controller = createAiController(service);
@@ -16,6 +16,12 @@ export function createAiRouter({ service, authorize }) {
   );
   router.get('/analyses', authorize('project.view'), asyncHandler(controller.listAnalyses));
   router.get('/analyses/:analysisId', authorize('project.view'), asyncHandler(controller.getAnalysis));
+  router.post(
+    '/analyses/:analysisId/approve',
+    authorize('ai.run'),
+    validate(approveAnalysisSchema),
+    asyncHandler(controller.approveAnalysis),
+  );
   router.get('/jobs/:jobId', authorize('project.view'), asyncHandler(controller.getJobStatus));
 
   return router;

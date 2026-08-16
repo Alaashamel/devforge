@@ -445,4 +445,18 @@ describe('api client', () => {
       'http://localhost:4000/api/v1/organizations/org-1/ai/jobs/j-1',
     );
   });
+
+  it('approves an analysis, committing the generated file', async () => {
+    globalThis.fetch = vi.fn().mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({ data: { analysisId: 'a-1', path: 'README.md', committed: true } }),
+    });
+
+    await api.approveAnalysis('org-1', 'a-1', { filePath: 'README.md' });
+    const [url, options] = globalThis.fetch.mock.calls[0];
+    expect(url).toBe('http://localhost:4000/api/v1/organizations/org-1/ai/analyses/a-1/approve');
+    expect(options.method).toBe('POST');
+    expect(JSON.parse(options.body)).toEqual({ filePath: 'README.md' });
+  });
 });

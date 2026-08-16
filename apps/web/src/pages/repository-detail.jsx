@@ -5,6 +5,7 @@ import { api } from '../services/api.js';
 import { useWorkspaceStore } from '../stores/workspace.js';
 import { ErrorBanner, Field, buttonClass, ghostButtonClass, inputClass } from '../components/form.jsx';
 import { AiAnalysisTab } from '../components/ai-analysis-tab.jsx';
+import { AiDocsTab } from '../components/ai-docs-tab.jsx';
 import { AiCodeReview } from '../components/ai-code-review.jsx';
 
 const stateTone = {
@@ -142,7 +143,7 @@ export function RepositoryDetail() {
       <ErrorBanner>{error}</ErrorBanner>
 
       <div className="flex flex-wrap gap-2 text-xs text-muted">
-        {['overview', 'pull-requests', 'branches', 'commits', 'issues', 'analysis', 'webhooks'].map((t) => (
+        {['overview', 'pull-requests', 'branches', 'commits', 'issues', 'analysis', 'docs', 'webhooks'].map((t) => (
           <button
             key={t}
             type="button"
@@ -158,7 +159,7 @@ export function RepositoryDetail() {
         ))}
       </div>
 
-      {!connected && tab !== 'overview' && tab !== 'analysis' ? (
+      {!connected && tab !== 'overview' && tab !== 'analysis' && tab !== 'docs' ? (
         <ErrorBanner>
           This view requires a live GitHub connection. Go to Repositories to connect GitHub.
         </ErrorBanner>
@@ -347,6 +348,10 @@ export function RepositoryDetail() {
 
       {tab === 'analysis' ? (
         <AiAnalysisTab orgId={orgId} repoId={repoId} />
+      ) : null}
+
+      {tab === 'docs' ? (
+        <AiDocsTab orgId={orgId} repoId={repoId} />
       ) : null}
 
       {tab === 'webhooks' ? (

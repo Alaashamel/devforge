@@ -130,6 +130,12 @@ export function createGithubClient({
       .map((segment) => encodeURIComponent(segment))
       .join('/');
 
+  const encodePath = (path) =>
+    String(path)
+      .split('/')
+      .map((segment) => encodeURIComponent(segment))
+      .join('/');
+
   return {
     getAuthenticatedUser: ({ token }) => request('GET', '/user', { token }),
     listRepositories: ({ token }) =>
@@ -162,6 +168,14 @@ export function createGithubClient({
         'GET',
         `/repos/${encodeName(fullName)}/pulls/${encodeURIComponent(number)}`,
         { token, raw: true, accept: 'application/vnd.github.diff' },
+      ),
+    getFile: ({ token, fullName, path }) =>
+      request('GET', `/repos/${encodeName(fullName)}/contents/${encodePath(path)}`, { token }),
+    createOrUpdateFile: ({ token, fullName, path, message, content, sha }) =>
+      request(
+        'PUT',
+        `/repos/${encodeName(fullName)}/contents/${encodePath(path)}`,
+        { token, body: { message, content, ...(sha ? { sha } : {}) } },
       ),
     listIssues: ({ token, fullName, state = 'open' }) =>
       request('GET', buildUrl(`/repos/${encodeName(fullName)}/issues`, { per_page: 100, state }), { token }),

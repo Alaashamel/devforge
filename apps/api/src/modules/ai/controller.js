@@ -30,6 +30,16 @@ export function createAiController(service) {
       res.json(result);
     },
 
+    approveAnalysis: async (req, res) => {
+      const result = await service.approveAnalysis({
+        orgId: req.params.orgId,
+        analysisId: req.params.analysisId,
+        filePath: req.body.filePath,
+        message: req.body.message,
+      });
+      res.json(result);
+    },
+
     getJobStatus: async (req, res) => {
       const result = await service.getJobStatus({
         orgId: req.params.orgId,

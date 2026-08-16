@@ -77,3 +77,18 @@ class ReviewReport(BaseModel):
 
     summary: str
     findings: list[ReviewFinding] = Field(default_factory=list)
+
+
+class GeneratedFile(BaseModel):
+    """One markdown file generated for user approval."""
+
+    path: str = Field(min_length=1)
+    content: str = Field(min_length=1)
+    note: str = ""
+
+
+class DocsReport(BaseModel):
+    """Validated output of the docs/readme generation job."""
+
+    summary: str = ""
+    files: list[GeneratedFile] = Field(default_factory=list)

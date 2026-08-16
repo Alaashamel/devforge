@@ -154,4 +154,57 @@ describe('github client', () => {
     await client.downloadTarball({ token: 't', fullName: 'a/b', ref: 'feature/x' });
     expect(fetchImpl.mock.calls[0][0]).toBe('https://api.github.com/repos/a/b/tarball/feature%2Fx');
   });
+
+  it('fetches a repository file with an encoded path', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(mockResponse({ status: 200, body: { sha: 'sha-abc', content: 'IyBIaQ==' } }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    const file = await client.getFile({ token: 't', fullName: 'a/b', path: 'docs/api.md' });
+    expect(file.sha).toBe('sha-abc');
+    const [url] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://api.github.com/repos/a/b/contents/docs/api.md');
+  });
+
+  it('creates a new repository file without a sha', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(mockResponse({ status: 201, body: { content: { sha: 'sha-new' } } }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    const result = await client.createOrUpdateFile({
+      token: 't',
+      fullName: 'a/b',
+      path: 'README.md',
+      message: 'docs: readme',
+      content: 'IyBIZWxsbw==',
+    });
+    expect(result.content.sha).toBe('sha-new');
+    const [, options] = fetchImpl.mock.calls[0];
+    expect(JSON.parse(options.body)).toEqual({
+      message: 'docs: readme',
+      content: 'IyBIZWxsbw==',
+    });
+  });
+
+  it('updates an existing repository file with its sha', async () => {
+    const fetchImpl = vi
+      .fn()
+      .mockResolvedValue(mockResponse({ status: 200, body: { content: { sha: 'sha-new' } } }));
+    const client = createGithubClient({ fetchImpl, apiUrl });
+    await client.createOrUpdateFile({
+      token: 't',
+      fullName: 'a/b',
+      path: 'README.md',
+      message: 'docs: readme',
+      content: 'IyBIZWxsbw==',
+      sha: 'sha-old',
+    });
+    const [url, options] = fetchImpl.mock.calls[0];
+    expect(url).toBe('https://api.github.com/repos/a/b/contents/README.md');
+    expect(JSON.parse(options.body)).toEqual({
+      message: 'docs: readme',
+      content: 'IyBIZWxsbw==',
+      sha: 'sha-old',
+    });
+  });
 });

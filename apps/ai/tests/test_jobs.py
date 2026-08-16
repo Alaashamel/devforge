@@ -1,5 +1,7 @@
 """Tests for the job orchestration service, including pull request reviews."""
 
+from types import SimpleNamespace
+
 from app.config import Settings
 from app.models.schemas import JobIntent
 from app.services.jobs import JobService
@@ -31,21 +33,43 @@ class FakeJobStore:
 
 class FakeAnalysis:
     def run(self, *, type_: str, snapshot: dict, context: str = "") -> tuple[dict, str]:
-        assert type_ == "code_review"
+        if type_ == "code_review":
+            return (
+                {
+                    "summary": "ok",
+                    "findings": [
+                        {
+                            "severity": "critical",
+                            "file": "a.js",
+                            "line": 1,
+                            "title": "boom",
+                        }
+                    ],
+                    "severity_counts": {"critical": 1},
+                },
+                "fake-model",
+            )
         return (
             {
-                "summary": "ok",
-                "findings": [
-                    {
-                        "severity": "critical",
-                        "file": "a.js",
-                        "line": 1,
-                        "title": "boom",
-                    }
+                "summary": "generated",
+                "files": [
+                    {"path": "docs/api.md", "content": "# Api\n", "note": ""},
+                    {"path": "docs/architecture.md", "content": "# Arch\n", "note": ""},
                 ],
-                "severity_counts": {"critical": 1},
             },
             "fake-model",
+        )
+
+
+class FakeIngestion:
+    def run(self, **kwargs) -> tuple[dict, object]:
+        return (
+            {
+                "repository_name": "acme/repo",
+                "file_count": 12,
+                "languages": {"JavaScript": 10, "Python": 2},
+            },
+            SimpleNamespace(files=[]),
         )
 
 
@@ -64,7 +88,7 @@ def _intent(diff: str = "diff --git a/x b/x\n@@ -1 +1 @@\n+new\n") -> JobIntent:
 
 
 def _service(store: FakeJobStore, analysis: FakeAnalysis) -> JobService:
-    return JobService(Settings(job_secret="s"), store, None, analysis)
+    return JobService(Settings(job_secret="s"), store, FakeIngestion(), analysis)
 
 
 def test_code_review_job_writes_analysis_and_succeeds():
@@ -98,4 +122,47 @@ def test_code_review_job_requires_a_diff():
 
     assert result.status == "failed"
     assert "diff" in result.error
+    assert store.analyses == []
+
+
+def test_docs_job_writes_analysis_and_succeeds():
+    store = FakeJobStore()
+    service = _service(store, FakeAnalysis())
+    intent = JobIntent(
+        job_id="job-2",
+        type="docs",
+        organization_id="org-1",
+        repository_id="repo-1",
+        archive_url="http://ai.test/archive",
+        archive_token="tok",
+        payload={"repository_name": "acme/repo"},
+    )
+    result = service.process(intent)
+
+    assert result.status == "succeeded"
+    assert len(result.result["files"]) == 2
+    assert result.result["repository"]["name"] == "acme/repo"
+
+    analysis = store.analyses[0]
+    assert analysis["type_"] == "docs"
+    assert analysis["score"] == {"files": 2}
+    assert analysis["report"]["files"][0]["path"] == "docs/api.md"
+
+    assert store.finished[0]["error"] is None
+
+
+def test_docs_job_requires_an_archive_url():
+    store = FakeJobStore()
+    service = _service(store, FakeAnalysis())
+    intent = JobIntent(
+        job_id="job-3",
+        type="readme",
+        organization_id="org-1",
+        repository_id="repo-1",
+        payload={"repository_name": "acme/repo"},
+    )
+    result = service.process(intent)
+
+    assert result.status == "failed"
+    assert "archive_url" in result.error
     assert store.analyses == []

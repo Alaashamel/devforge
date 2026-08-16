@@ -129,6 +129,11 @@ export const api = {
     request(`/organizations/${orgId}/ai/analyses${toQuery(params)}`),
   getAnalysis: (orgId, analysisId) =>
     request(`/organizations/${orgId}/ai/analyses/${analysisId}`),
+  approveAnalysis: (orgId, analysisId, payload) =>
+    request(`/organizations/${orgId}/ai/analyses/${analysisId}/approve`, {
+      method: 'POST',
+      body: payload,
+    }),
   getAiJobStatus: (orgId, jobId) =>
     request(`/organizations/${orgId}/ai/jobs/${jobId}`),
 
