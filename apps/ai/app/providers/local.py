@@ -1,10 +1,12 @@
 """Local model adapter (Ollama-compatible OpenAI endpoint)."""
 
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
 
 from .base import CompletionError, CompletionRequest, CompletionResult
+from .openai import iter_chat_completion_deltas
 
 
 class LocalAdapter:
@@ -52,3 +54,27 @@ class LocalAdapter:
             usage=data.get("usage", {}),
             raw=data,
         )
+
+    def stream(self, request: CompletionRequest) -> Iterator[str]:
+        if not self.base_url:
+            raise CompletionError("no local model endpoint configured (AI_LOCAL_MODEL_URL)")
+        body: dict[str, Any] = {
+            "temperature": request.temperature,
+            "max_tokens": request.max_tokens,
+            "messages": request.messages,
+            "stream": True,
+        }
+        model = request.model or self.model
+        if model:
+            body["model"] = model
+        if request.system:
+            body["messages"] = [{"role": "system", "content": request.system}, *request.messages]
+        try:
+            with self.http.stream(
+                "POST", f"{self.base_url}/chat/completions", json=body
+            ) as response:
+                if response.status_code >= 400:
+                    raise CompletionError(f"local model returned HTTP {response.status_code}")
+                yield from iter_chat_completion_deltas(response)
+        except httpx.HTTPError as exc:
+            raise CompletionError(f"local model stream failed: {exc}") from exc

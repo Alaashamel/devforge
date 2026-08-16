@@ -92,3 +92,20 @@ class DocsReport(BaseModel):
 
     summary: str = ""
     files: list[GeneratedFile] = Field(default_factory=list)
+
+
+class AssistantMessage(BaseModel):
+    """One chat message in an assistant conversation."""
+
+    role: str = Field(pattern="^(user|assistant)$")
+    content: str = Field(min_length=1, max_length=100000)
+
+
+class AssistantRequest(BaseModel):
+    """A streaming assistant request submitted by the core API."""
+
+    conversation_id: str = Field(min_length=1, max_length=64)
+    organization_id: str = Field(min_length=1)
+    repository_id: str = Field(min_length=1)
+    repository_name: str = ""
+    messages: list[AssistantMessage] = Field(min_length=1, max_length=40)

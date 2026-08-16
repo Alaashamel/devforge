@@ -1,5 +1,7 @@
 """OpenAI-compatible chat completions and embeddings adapters."""
 
+import json
+from collections.abc import Iterator
 from typing import Any
 
 import httpx
@@ -25,6 +27,28 @@ def _messages_payload(request: CompletionRequest, model: str) -> dict[str, Any]:
     if request.json_mode:
         body["response_format"] = {"type": "json_object"}
     return body
+
+
+def iter_chat_completion_deltas(response) -> Iterator[str]:
+    """Yield content deltas from an OpenAI-style SSE chat stream."""
+    for line in response.iter_lines():
+        if not line or not line.startswith("data:"):
+            continue
+        payload = line[len("data:"):].strip()
+        if not payload or payload == "[DONE]":
+            if payload == "[DONE]":
+                break
+            continue
+        try:
+            chunk = json.loads(payload)
+        except json.JSONDecodeError:
+            continue
+        choices = chunk.get("choices") or []
+        if not choices:
+            continue
+        delta = (choices[0].get("delta") or {}).get("content")
+        if delta:
+            yield delta
 
 
 class OpenAIAdapter:
@@ -68,6 +92,22 @@ class OpenAIAdapter:
             usage=data.get("usage", {}),
             raw=data,
         )
+
+    def stream(self, request: CompletionRequest) -> Iterator[str]:
+        body = _messages_payload(request, request.model or self.model)
+        body["stream"] = True
+        try:
+            with self.http.stream(
+                "POST",
+                f"{self.base_url}/chat/completions",
+                headers={"Authorization": f"Bearer {self.api_key}"},
+                json=body,
+            ) as response:
+                if response.status_code >= 400:
+                    raise CompletionError(f"openai returned HTTP {response.status_code}")
+                yield from iter_chat_completion_deltas(response)
+        except httpx.HTTPError as exc:
+            raise CompletionError(f"openai stream failed: {exc}") from exc
 
 
 class OpenAIEmbeddingAdapter:
