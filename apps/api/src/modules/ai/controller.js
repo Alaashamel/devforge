@@ -48,6 +48,77 @@ export function createAiController(service) {
       res.json(result);
     },
 
+    listConversations: async (req, res) => {
+      const result = await service.listConversations({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        repositoryId: req.query.repositoryId,
+      });
+      res.json(result);
+    },
+
+    getConversation: async (req, res) => {
+      const result = await service.getConversation({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        conversationId: req.params.conversationId,
+      });
+      res.json(result);
+    },
+
+    createConversation: async (req, res) => {
+      const result = await service.createConversation({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        repositoryId: req.body.repositoryId,
+        title: req.body.title,
+      });
+      res.status(201).json(result);
+    },
+
+    deleteConversation: async (req, res) => {
+      const result = await service.deleteConversation({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        conversationId: req.params.conversationId,
+      });
+      res.json(result);
+    },
+
+    listMessages: async (req, res) => {
+      const result = await service.listMessages({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        conversationId: req.params.conversationId,
+      });
+      res.json(result);
+    },
+
+    streamAssistantReply: async (req, res) => {
+      const { stream } = await service.streamAssistantReply({
+        orgId: req.params.orgId,
+        userId: req.auth.userId,
+        conversationId: req.params.conversationId,
+        content: req.body.content,
+      });
+      res.setHeader('Content-Type', 'text/event-stream');
+      res.setHeader('Cache-Control', 'no-cache');
+      res.setHeader('X-Accel-Buffering', 'no');
+      const reader = stream.getReader();
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          res.write(value);
+        }
+        res.end();
+      } catch {
+        res.destroy();
+      }
+    },
+
     streamArchive: async (req, res) => {
       const { repo, response } = await service.streamArchive({
         repoId: req.params.repoId,

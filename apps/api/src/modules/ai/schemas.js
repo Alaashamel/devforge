@@ -27,3 +27,19 @@ export const approveAnalysisSchema = z
     message: z.string().max(200, 'message is too long').optional(),
   })
   .strict();
+
+export const createConversationSchema = z
+  .object({
+    repositoryId: z.string().uuid('repositoryId must be a valid id'),
+    title: z.string().max(200, 'title is too long').optional(),
+  })
+  .strict();
+
+export const streamMessageSchema = z
+  .object({
+    content: z
+      .string()
+      .min(1, 'content is required')
+      .max(100000, 'content is too long'),
+  })
+  .strict();

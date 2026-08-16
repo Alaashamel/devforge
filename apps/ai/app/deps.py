@@ -6,6 +6,7 @@ from .config import get_settings
 from .context.job_store import JobStore
 from .context.vector_store import VectorStore
 from .pipelines.analysis import AnalysisPipeline
+from .pipelines.assistant import AssistantPipeline
 from .pipelines.ingest import IngestionPipeline
 from .providers import build_embedder, build_gateway
 from .services.jobs import JobService
@@ -21,3 +22,12 @@ def get_job_service() -> JobService:
     ingestion = IngestionPipeline(settings, embedder, vector_store)
     analysis = AnalysisPipeline(settings, gateway)
     return JobService(settings, job_store, ingestion, analysis)
+
+
+@lru_cache
+def get_assistant_pipeline() -> AssistantPipeline:
+    settings = get_settings()
+    gateway = build_gateway(settings)
+    embedder = build_embedder(settings)
+    vector_store = VectorStore(settings.database_url)
+    return AssistantPipeline(settings, gateway, embedder, vector_store)

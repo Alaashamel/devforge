@@ -34,6 +34,29 @@ function mapAnalysis(analysis) {
   };
 }
 
+function mapConversation(conversation) {
+  return {
+    id: conversation.id,
+    organizationId: conversation.organization_id,
+    repositoryId: conversation.repository_id ?? null,
+    userId: conversation.user_id,
+    title: conversation.title,
+    messageCount: conversation.message_count ?? 0,
+    createdAt: conversation.created_at,
+    updatedAt: conversation.updated_at,
+  };
+}
+
+function mapMessage(message) {
+  return {
+    id: message.id,
+    role: message.role,
+    content: message.content,
+    sources: message.sources ?? [],
+    createdAt: message.created_at,
+  };
+}
+
 /**
  * AI job orchestration. The API creates bounded analysis jobs, submits them
  * to the isolated AI service over a signed job token, and streams
@@ -235,6 +258,184 @@ export function createAiService({
     });
   }
 
+  async function listConversations({ orgId, userId, repositoryId }) {
+    const conditions = ['organization_id = $1', 'user_id = $2'];
+    const params = [orgId, userId];
+    if (repositoryId) {
+      params.push(repositoryId);
+      conditions.push(`repository_id = $${params.length}`);
+    }
+    const { rows } = await pool.query(
+      `SELECT c.*,
+              (SELECT count(*)::int FROM ai_messages m WHERE m.conversation_id = c.id)
+                AS message_count
+         FROM ai_conversations c
+        WHERE ${conditions.join(' AND ')}
+        ORDER BY c.updated_at DESC
+        LIMIT 100`,
+      params,
+    );
+    return { data: rows.map(mapConversation) };
+  }
+
+  async function getConversation({ orgId, userId, conversationId }) {
+    const { rows } = await pool.query(
+      `SELECT c.*,
+              (SELECT count(*)::int FROM ai_messages m WHERE m.conversation_id = c.id)
+                AS message_count
+         FROM ai_conversations c
+        WHERE c.id = $1 AND c.organization_id = $2 AND c.user_id = $3`,
+      [conversationId, orgId, userId],
+    );
+    if (rows.length === 0) {
+      throw notFound('Conversation not found');
+    }
+    return { data: mapConversation(rows[0]) };
+  }
+
+  async function createConversation({ orgId, userId, repositoryId, title }) {
+    const repo = await getRepoRow({ orgId, repoId: repositoryId });
+    if (!repo) {
+      throw notFound('Repository not found');
+    }
+    const { rows } = await pool.query(
+      `INSERT INTO ai_conversations (organization_id, user_id, repository_id, title)
+       VALUES ($1, $2, $3, $4) RETURNING *`,
+      [orgId, userId, repositoryId, title || 'New conversation'],
+    );
+    return { data: mapConversation(rows[0]) };
+  }
+
+  async function deleteConversation({ orgId, userId, conversationId }) {
+    const { rowCount } = await pool.query(
+      'DELETE FROM ai_conversations WHERE id = $1 AND organization_id = $2 AND user_id = $3',
+      [conversationId, orgId, userId],
+    );
+    if (rowCount === 0) {
+      throw notFound('Conversation not found');
+    }
+    return { data: { deleted: true } };
+  }
+
+  async function listMessages({ orgId, userId, conversationId }) {
+    await getConversation({ orgId, userId, conversationId });
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+      [conversationId],
+    );
+    return { data: rows.map(mapMessage) };
+  }
+
+  async function streamAssistantReply({ orgId, userId, conversationId, content }) {
+    const conversation = await getConversation({ orgId, userId, conversationId });
+    if (!conversation.data.repositoryId) {
+      throw badRequest('This conversation is not linked to a repository');
+    }
+    const repo = await getRepoRow({ orgId, repoId: conversation.data.repositoryId });
+    if (!repo) {
+      throw notFound('Repository not found');
+    }
+
+    await pool.query(
+      "INSERT INTO ai_messages (conversation_id, role, content) VALUES ($1, 'user', $2)",
+      [conversationId, content],
+    );
+    const { rows: history } = await pool.query(
+      'SELECT role, content FROM ai_messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+      [conversationId],
+    );
+
+    const token = signJobToken('assistant', jobSecret, jobTokenTtlSeconds, now);
+    let aiResponse;
+    try {
+      aiResponse = await fetchImpl(`${aiServiceUrl}/assistant/stream`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Devforge-Job-Token': token,
+          Accept: 'text/event-stream',
+        },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          organization_id: orgId,
+          repository_id: conversation.data.repositoryId,
+          repository_name: repo.name,
+          messages: history,
+        }),
+      });
+    } catch (err) {
+      throw externalServiceError('AI service unreachable', null, err);
+    }
+    if (!aiResponse.ok || !aiResponse.body) {
+      throw externalServiceError(
+        `AI service rejected the assistant request (HTTP ${aiResponse.status})`,
+      );
+    }
+
+    let sources = [];
+    let answer = '';
+    let failed = false;
+    let pending = '';
+    const encoder = new TextEncoder();
+
+    const relay = new TransformStream({
+      transform(chunk, controller) {
+        pending += new TextDecoder().decode(chunk);
+        let boundary;
+        while ((boundary = pending.indexOf('\n\n')) !== -1) {
+          const event = pending.slice(0, boundary);
+          pending = pending.slice(boundary + 2);
+          if (event.startsWith('data: ')) {
+            try {
+              const payload = JSON.parse(event.slice('data: '.length));
+              if (payload.type === 'sources') {
+                sources = Array.isArray(payload.sources) ? payload.sources : [];
+              } else if (payload.type === 'delta') {
+                answer += payload.text ?? '';
+              } else if (payload.type === 'error') {
+                failed = true;
+              }
+            } catch {
+              // Ignore malformed events; pass them through untouched.
+            }
+          }
+          controller.enqueue(encoder.encode(`${event}\n\n`));
+        }
+      },
+      async flush(controller) {
+        if (pending) {
+          controller.enqueue(encoder.encode(pending));
+        }
+        if (!failed) {
+          await pool.query(
+            `INSERT INTO ai_messages (conversation_id, role, content, sources)
+             VALUES ($1, 'assistant', $2, $3)`,
+            [conversationId, answer, JSON.stringify(sources)],
+          );
+        }
+      },
+    });
+
+    const reader = aiResponse.body.getReader();
+    const writer = relay.writable.getWriter();
+    void (async () => {
+      try {
+        for (;;) {
+          const { done, value } = await reader.read();
+          if (done) {
+            break;
+          }
+          await writer.write(value);
+        }
+        await writer.close();
+      } catch {
+        await writer.abort().catch(() => {});
+      }
+    })();
+
+    return { stream: relay.readable };
+  }
+
   return {
     createAnalysis,
     getJobStatus,
@@ -242,5 +443,11 @@ export function createAiService({
     getAnalysis,
     approveAnalysis,
     streamArchive,
+    listConversations,
+    getConversation,
+    createConversation,
+    deleteConversation,
+    listMessages,
+    streamAssistantReply,
   };
 }

@@ -2,7 +2,7 @@
 
 from fastapi import FastAPI
 
-from .routers import health, jobs
+from .routers import assistant, health, jobs
 
 
 def create_app() -> FastAPI:
@@ -13,6 +13,7 @@ def create_app() -> FastAPI:
     )
     app.include_router(health.router)
     app.include_router(jobs.router)
+    app.include_router(assistant.router)
     return app
 
 

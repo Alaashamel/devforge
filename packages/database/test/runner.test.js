@@ -28,6 +28,7 @@ const MIGRATION_NAMES = [
   '0009_chat',
   '0010_ai_vectors',
   '0011_ai_analyzer_type',
+  '0012_ai_assistant_conversations',
 ];
 
 const EXPECTED_TABLES = [
@@ -145,25 +146,22 @@ describe('migration runner', () => {
 
   it('rolls back the last migration and re-applies it', async () => {
     const rolledBack = await migrateDown({ client, steps: 1 });
-    expect(rolledBack).toEqual(['0011_ai_analyzer_type']);
+    expect(rolledBack).toEqual(['0012_ai_assistant_conversations']);
 
     const { rows: check } = await client.query(`
-      SELECT pg_get_constraintdef(oid) AS def
-      FROM pg_constraint
-      WHERE conname = 'ai_analyses_type_check'
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'ai_conversations' AND column_name = 'repository_id'
     `);
-    expect(check).toHaveLength(1);
-    expect(check[0].def).not.toContain('analyzer');
+    expect(check).toHaveLength(0);
 
     const reapplied = await migrateUp({ client });
-    expect(reapplied).toEqual(['0011_ai_analyzer_type']);
+    expect(reapplied).toEqual(['0012_ai_assistant_conversations']);
 
     const { rows: checkAfter } = await client.query(`
-      SELECT pg_get_constraintdef(oid) AS def
-      FROM pg_constraint
-      WHERE conname = 'ai_analyses_type_check'
+      SELECT 1 FROM information_schema.columns
+      WHERE table_name = 'ai_conversations' AND column_name = 'repository_id'
     `);
-    expect(checkAfter[0].def).toContain('analyzer');
+    expect(checkAfter).toHaveLength(1);
   });
 });
 
@@ -212,10 +210,10 @@ export const down = async () => {};`,
 });
 
 describe('listMigrations helper', () => {
-  it('reports eleven baseline migrations', () => {
+  it('reports twelve baseline migrations', () => {
     const migrations = listMigrations();
-    expect(migrations).toHaveLength(11);
+    expect(migrations).toHaveLength(12);
     expect(migrations[0].name).toBe('0001_identity');
-    expect(migrations[10].name).toBe('0011_ai_analyzer_type');
+    expect(migrations[11].name).toBe('0012_ai_assistant_conversations');
   });
 });
