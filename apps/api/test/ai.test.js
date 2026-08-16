@@ -719,3 +719,317 @@ describe('ai access control', () => {
     expect(res.body.error.code).toBe('FORBIDDEN');
   });
 });
+
+describe('ai conversations', () => {
+  async function seedConversation({ owner, org, repo, title } = {}) {
+    if (!owner || !org || !repo) {
+      ({ owner, org, repo } = await seed());
+    }
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, title });
+    return { owner, org, repo, conversation: res.body.data };
+  }
+
+  it('creates a conversation linked to a repository', async () => {
+    const { owner, org, repo } = await seed();
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id, title: 'Understand this repo' });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data).toMatchObject({
+      organizationId: org.id,
+      repositoryId: repo.id,
+      userId: owner.userId,
+      title: 'Understand this repo',
+      messageCount: 0,
+    });
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_conversations WHERE id = $1',
+      [res.body.data.id],
+    );
+    expect(rows[0]).toMatchObject({ repository_id: repo.id, user_id: owner.userId });
+  });
+
+  it('defaults the conversation title', async () => {
+    const { owner, org, repo } = await seed();
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id });
+
+    expect(res.status).toBe(201);
+    expect(res.body.data.title).toBe('New conversation');
+  });
+
+  it('lists conversations for a repository', async () => {
+    const seeded = await seed();
+    await seedConversation({ ...seeded, title: 'first' });
+    await seedConversation({ ...seeded, title: 'second' });
+
+    const res = await request(app)
+      .get(`/api/v1/organizations/${seeded.org.id}/ai/conversations?repositoryId=${seeded.repo.id}`)
+      .set(auth(seeded.owner.accessToken));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toHaveLength(2);
+    expect(res.body.data.map((c) => c.title)).toEqual(['second', 'first']);
+  });
+
+  it('returns 404 when creating a conversation for a repo outside the org', async () => {
+    const { owner, org } = await seed();
+    const other = await createOrg(pool, {
+      ownerId: owner.userId,
+      slug: `ai-conv-other-${Date.now()}-${repoSeq}`,
+    });
+    const repo = await insertRepo(other.id);
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations`)
+      .set(auth(owner.accessToken))
+      .send({ repositoryId: repo.id });
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('deletes a conversation owned by the user', async () => {
+    const seeded = await seed();
+    const { conversation } = await seedConversation(seeded);
+
+    const res = await request(app)
+      .delete(`/api/v1/organizations/${seeded.org.id}/ai/conversations/${conversation.id}`)
+      .set(auth(seeded.owner.accessToken));
+
+    expect(res.status).toBe(200);
+    expect(res.body.data).toEqual({ deleted: true });
+    const { rowCount } = await pool.query('SELECT * FROM ai_conversations WHERE id = $1', [
+      conversation.id,
+    ]);
+    expect(rowCount).toBe(0);
+  });
+
+  it('returns 404 when deleting a conversation of another user', async () => {
+    const seeded = await seed();
+    const { conversation } = await seedConversation(seeded);
+    const other = await registerUser(app, mailer);
+    await addOrgMember(pool, { orgId: seeded.org.id, userId: other.userId, role: 'developer' });
+
+    const res = await request(app)
+      .delete(`/api/v1/organizations/${seeded.org.id}/ai/conversations/${conversation.id}`)
+      .set(auth(other.accessToken));
+
+    expect(res.status).toBe(404);
+    expect(res.body.error.code).toBe('NOT_FOUND');
+  });
+});
+
+describe('ai assistant streaming', () => {
+  function sseFetch(events) {
+    return async (url, options) => {
+      submitted.push({ url, options });
+      const body = events.map((e) => `data: ${JSON.stringify(e)}\n\n`).join('');
+      return {
+        ok: true,
+        status: 200,
+        body: new ReadableStream({
+          start(controller) {
+            controller.enqueue(new TextEncoder().encode(body));
+            controller.close();
+          },
+        }),
+      };
+    };
+  }
+
+  async function seedWithStream(events) {
+    const seeded = await seed();
+    buildApp({ fetchImpl: sseFetch(events) });
+    const created = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ repositoryId: seeded.repo.id, title: 'Chat' });
+    return { ...seeded, conversation: created.body.data };
+  }
+
+  it('relays a streamed reply and persists user + assistant messages', async () => {
+    const { owner, org, repo, conversation } = await seedWithStream([
+      { type: 'sources', sources: [{ path: 'README.md', score: 0.9 }] },
+      { type: 'delta', text: 'hello ' },
+      { type: 'delta', text: 'world' },
+      { type: 'done' },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations/${conversation.id}/stream`)
+      .set(auth(owner.accessToken))
+      .send({ content: 'What does this repo do?' });
+
+    expect(res.status).toBe(200);
+    expect(res.headers['content-type']).toContain('text/event-stream');
+    expect(res.text).toContain('"type":"sources"');
+    expect(res.text).toContain('"type":"done"');
+
+    expect(submitted).toHaveLength(1);
+    const { url, options } = submitted[0];
+    expect(url).toBe('http://localhost:5001/assistant/stream');
+    expect(verifyJobToken(options.headers['X-Devforge-Job-Token'], AI_SECRET, 300, NOW)).toBe(
+      'assistant',
+    );
+    const body = JSON.parse(options.body);
+    expect(body).toMatchObject({
+      conversation_id: conversation.id,
+      organization_id: org.id,
+      repository_id: repo.id,
+      repository_name: 'repo',
+      messages: [{ role: 'user', content: 'What does this repo do?' }],
+    });
+
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_messages WHERE conversation_id = $1 ORDER BY created_at ASC',
+      [conversation.id],
+    );
+    expect(rows).toHaveLength(2);
+    expect(rows[0]).toMatchObject({ role: 'user', content: 'What does this repo do?' });
+    expect(rows[1]).toMatchObject({ role: 'assistant', content: 'hello world' });
+    expect(rows[1].sources).toEqual([{ path: 'README.md', score: 0.9 }]);
+  });
+
+  it('passes the full conversation history to the AI service', async () => {
+    const { owner, org, conversation } = await seedWithStream([
+      { type: 'sources', sources: [] },
+      { type: 'delta', text: 'ok' },
+      { type: 'done' },
+    ]);
+    await pool.query(
+      `INSERT INTO ai_messages (conversation_id, role, content)
+       VALUES ($1, 'user', 'first question'), ($1, 'assistant', 'first answer')`,
+      [conversation.id],
+    );
+
+    await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations/${conversation.id}/stream`)
+      .set(auth(owner.accessToken))
+      .send({ content: 'next question' });
+
+    const body = JSON.parse(submitted[0].options.body);
+    expect(body.messages).toEqual([
+      { role: 'user', content: 'first question' },
+      { role: 'assistant', content: 'first answer' },
+      { role: 'user', content: 'next question' },
+    ]);
+  });
+
+  it('does not persist an assistant message when the model errors', async () => {
+    const { owner, org, conversation } = await seedWithStream([
+      { type: 'error', message: 'model stream failed' },
+    ]);
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations/${conversation.id}/stream`)
+      .set(auth(owner.accessToken))
+      .send({ content: 'hi' });
+
+    expect(res.status).toBe(200);
+    expect(res.text).toContain('model stream failed');
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_messages WHERE conversation_id = $1',
+      [conversation.id],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].role).toBe('user');
+  });
+
+  it('returns 502 when the AI service is unreachable', async () => {
+    const seeded = await seed();
+    buildApp({ fetchImpl: vi.fn().mockRejectedValue(new Error('connection refused')) });
+    const created = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ repositoryId: seeded.repo.id });
+
+    const res = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations/${created.body.data.id}/stream`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ content: 'hi' });
+
+    expect(res.status).toBe(502);
+    expect(res.body.error.code).toBe('EXTERNAL_SERVICE_ERROR');
+    const { rows } = await pool.query(
+      'SELECT * FROM ai_messages WHERE conversation_id = $1',
+      [created.body.data.id],
+    );
+    expect(rows).toHaveLength(1);
+    expect(rows[0].role).toBe('user');
+  });
+
+  it('returns 404 when streaming into a conversation outside the org', async () => {
+    const seeded = await seed();
+    const other = await createOrg(pool, {
+      ownerId: seeded.owner.userId,
+      slug: `ai-stream-other-${Date.now()}-${repoSeq}`,
+    });
+    const repo = await insertRepo(other.id);
+    const res = await request(app)
+      .post(`/api/v1/organizations/${other.id}/ai/conversations`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ repositoryId: repo.id });
+    const conversationId = res.body.data.id;
+
+    const stream = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations/${conversationId}/stream`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ content: 'hi' });
+
+    expect(stream.status).toBe(404);
+    expect(stream.body.error.code).toBe('NOT_FOUND');
+  });
+
+  it('blocks a viewer from creating conversations or streaming', async () => {
+    const seeded = await seed();
+    const viewer = await registerUser(app, mailer);
+    await addOrgMember(pool, { orgId: seeded.org.id, userId: viewer.userId, role: 'viewer' });
+
+    const create = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations`)
+      .set(auth(viewer.accessToken))
+      .send({ repositoryId: seeded.repo.id });
+    expect(create.status).toBe(403);
+
+    const list = await request(app)
+      .get(`/api/v1/organizations/${seeded.org.id}/ai/conversations?repositoryId=${seeded.repo.id}`)
+      .set(auth(viewer.accessToken));
+    expect(list.status).toBe(200);
+
+    const ownerRes = await request(app)
+      .post(`/api/v1/organizations/${seeded.org.id}/ai/conversations`)
+      .set(auth(seeded.owner.accessToken))
+      .send({ repositoryId: seeded.repo.id });
+    const stream = await request(app)
+      .post(
+        `/api/v1/organizations/${seeded.org.id}/ai/conversations/${ownerRes.body.data.id}/stream`,
+      )
+      .set(auth(viewer.accessToken))
+      .send({ content: 'hi' });
+    expect(stream.status).toBe(403);
+  });
+
+  it('requires authentication for conversation endpoints', async () => {
+    const { org, repo } = await seed();
+
+    const create = await request(app)
+      .post(`/api/v1/organizations/${org.id}/ai/conversations`)
+      .send({ repositoryId: repo.id });
+    expect(create.status).toBe(401);
+
+    const list = await request(app).get(
+      `/api/v1/organizations/${org.id}/ai/conversations?repositoryId=${repo.id}`,
+    );
+    expect(list.status).toBe(401);
+  });
+});
