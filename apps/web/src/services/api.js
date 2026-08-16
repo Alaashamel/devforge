@@ -137,6 +137,60 @@ export const api = {
   getAiJobStatus: (orgId, jobId) =>
     request(`/organizations/${orgId}/ai/jobs/${jobId}`),
 
+  listConversations: (orgId, params = {}) =>
+    request(`/organizations/${orgId}/ai/conversations${toQuery(params)}`),
+  createConversation: (orgId, payload) =>
+    request(`/organizations/${orgId}/ai/conversations`, { method: 'POST', body: payload }),
+  deleteConversation: (orgId, conversationId) =>
+    request(`/organizations/${orgId}/ai/conversations/${conversationId}`, {
+      method: 'DELETE',
+    }),
+  listMessages: (orgId, conversationId) =>
+    request(`/organizations/${orgId}/ai/conversations/${conversationId}/messages`),
+  streamAssistantReply: async (orgId, conversationId, content, onEvent, { signal } = {}) => {
+    const headers = { Accept: 'text/event-stream', 'Content-Type': 'application/json' };
+    if (accessToken) headers.Authorization = `Bearer ${accessToken}`;
+    const response = await fetch(
+      `${API_URL}/organizations/${orgId}/ai/conversations/${conversationId}/stream`,
+      {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({ content }),
+        signal,
+      },
+    );
+    if (!response.ok) {
+      const payload = await response.json().catch(() => null);
+      throw new ApiError(
+        payload?.error?.message ?? `Request failed with status ${response.status}`,
+        { status: response.status, code: payload?.error?.code },
+      );
+    }
+    if (!response.body) {
+      throw new ApiError('Streaming is not supported by this browser', { status: 0 });
+    }
+    const reader = response.body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = '';
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buffer += decoder.decode(value, { stream: true });
+      let boundary;
+      while ((boundary = buffer.indexOf('\n\n')) !== -1) {
+        const event = buffer.slice(0, boundary);
+        buffer = buffer.slice(boundary + 2);
+        if (event.startsWith('data: ')) {
+          try {
+            onEvent?.(JSON.parse(event.slice('data: '.length)));
+          } catch {
+            // Ignore malformed events.
+          }
+        }
+      }
+    }
+  },
+
   listProjects: (orgId, params = {}) => request(`/organizations/${orgId}/projects${toQuery(params)}`),
   getProject: (orgId, projectId) => request(`/organizations/${orgId}/projects/${projectId}`),
   createProject: (orgId, payload) =>
