@@ -35,10 +35,21 @@ def test_architecture_pipeline_returns_parsed_json():
     assert model == "fake-model"
 
 
-def test_readme_pipeline_passes_markdown_through():
-    pipeline = _pipeline('{"readme": "# Demo\\n", "summary": "A demo"}')
+def test_readme_pipeline_validates_files():
+    pipeline = _pipeline(
+        '{"summary": "A demo", "files": [{"path": "README.md", "content": "# Demo\\n"}]}'
+    )
     result, _ = pipeline.run(type_="readme", snapshot={})
-    assert result["readme"] == "# Demo\n"
+    assert result["summary"] == "A demo"
+    assert result["files"] == [{"path": "README.md", "content": "# Demo\n", "note": ""}]
+
+
+def test_readme_pipeline_rejects_invalid_files():
+    pipeline = _pipeline(
+        '{"summary": "A demo", "files": [{"path": "docs/api.md", "content": "# Api\\n"}]}'
+    )
+    with pytest.raises(AnalysisError):
+        pipeline.run(type_="readme", snapshot={})
 
 
 def test_analysis_raises_on_malformed_json():

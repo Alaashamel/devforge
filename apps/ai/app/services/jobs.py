@@ -37,6 +37,8 @@ class JobService:
             return JobResult(job_id=job_id, status="failed", error=message)
         if intent.type == "code_review":
             return self._process_review(intent, job_id)
+        if intent.type in ("docs", "readme"):
+            return self._process_docs(intent, job_id)
         if not intent.organization_id or not intent.repository_id or not intent.archive_url:
             message = "analysis job requires organization_id, repository_id and archive_url"
             self.job_store.finish(job_id, error=message)
@@ -120,6 +122,41 @@ class JobService:
             self.job_store.finish(job_id, result=result, model=model)
             return JobResult(job_id=job_id, status="succeeded", result=result, model=model)
         except AnalysisError as exc:
+            self.job_store.finish(job_id, error=str(exc))
+            return JobResult(job_id=job_id, status="failed", error=str(exc))
+
+    def _process_docs(self, intent: JobIntent, job_id: str) -> JobResult:
+        if not intent.organization_id or not intent.repository_id or not intent.archive_url:
+            message = "docs/readme job requires organization_id, repository_id and archive_url"
+            self.job_store.finish(job_id, error=message)
+            return JobResult(job_id=job_id, status="failed", error=message)
+        try:
+            summary, snapshot = self.ingestion.run(
+                repository_id=intent.repository_id,
+                organization_id=intent.organization_id,
+                archive_url=intent.archive_url,
+                archive_token=intent.archive_token,
+                repository_name=intent.payload.get("repository_name") or intent.payload.get("name"),
+            )
+            context = self._top_file_context(snapshot)
+            result, model = self.analysis.run(type_=intent.type, snapshot=summary, context=context)
+            result["repository"] = {
+                "name": summary["repository_name"],
+                "file_count": summary["file_count"],
+                "languages": summary["languages"],
+            }
+            score = {"files": len(result["files"])}
+            self.job_store.insert_analysis(
+                organization_id=intent.organization_id,
+                repository_id=intent.repository_id,
+                type_=intent.type,
+                model=model,
+                score=score,
+                report=result,
+            )
+            self.job_store.finish(job_id, result=result, model=model)
+            return JobResult(job_id=job_id, status="succeeded", result=result, model=model)
+        except (IngestionError, AnalysisError) as exc:
             self.job_store.finish(job_id, error=str(exc))
             return JobResult(job_id=job_id, status="failed", error=str(exc))
 
