@@ -38,11 +38,11 @@ Rules:
 apps/ai/
 ├── app/
 │   ├── main.py            # FastAPI app, routers, lifecycle
-│   ├── routers/           # jobs, health
+│   ├── routers/           # jobs, health, assistant
 │   ├── models/            # Pydantic schemas (input/output contracts)
 │   ├── services/          # pipeline orchestration
 │   ├── providers/         # provider gateway + adapters
-│   ├── pipelines/         # ingestion, analysis, analyzer, review, scoring
+│   ├── pipelines/         # ingestion, analysis, analyzer, review, scoring, assistant
 │   ├── context/           # retrieval, vector store, job store
 │   ├── ingestion/         # repo fetch, filtering, language detection
 │   └── config.py          # env config (pydantic-settings)
@@ -51,7 +51,7 @@ apps/ai/
 
 apps/api/src/modules/ai/    # API-side orchestration
 ├── tokens.js               # HMAC job/archive tokens (mirrors app/auth.py)
-├── service.js              # createAnalysis · getAnalysis · getJobStatus · listAnalyses · approveAnalysis · streamArchive
+├── service.js              # createAnalysis · getAnalysis · getJobStatus · listAnalyses · approveAnalysis · streamArchive · conversations & streamAssistantReply
 ├── controller.js           # request/response mapping
 ├── routes.js               # org-scoped router + public signed archive router
 └── schemas.js              # Zod input validation
@@ -137,6 +137,20 @@ to the repository automatically: the user previews the draft and approves a
 specific file, at which point the API commits it through the GitHub Contents
 API (create or update, reusing the existing file's `sha`) and records the
 approval in `report.approvals`.
+
+The **engineering assistant** is a stateless, streamed endpoint rather than a
+job: the API calls `POST {AI_SERVICE_URL}/assistant/stream` with the shared
+HMAC job token (id `assistant`) and a body of `{conversation_id,
+organization_id, repository_id, repository_name, messages}`. The AI service
+runs the `assistant` pipeline, which hybrid-retrieves (vector + keyword) only
+the chunks of that repository, wraps excerpts in `<untrusted>…</untrusted>` as
+data-only context, truncates history to the last 20 messages and streams the
+reply as Server-Sent Events: `sources` (retrieved context), repeated `delta`
+text chunks, then `done` — or a single `error` event. The API relays the raw
+SSE stream to the browser, persists the user message before the call and the
+assistant reply (with its `sources` jsonb) only when the stream finishes
+without an error. Conversations are repository-scoped via
+`ai_conversations.repository_id` (migration `0012`).
 
 Token formats (HMAC-SHA256, base64url; identical in `apps/api/.../ai/tokens.js`
 and `apps/ai/app/auth.py`):

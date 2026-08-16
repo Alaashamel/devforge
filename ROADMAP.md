@@ -130,7 +130,8 @@ Deliverables:
       (findings, review score and run-and-poll per-PR UI).
 - [x] AI Documentation / README generator with preview-and-approve
       (approving a draft commits it to GitHub).
-- [ ] AI Engineering Assistant grounded in repository context.
+- [x] AI Engineering Assistant grounded in repository context (streamed
+      replies scoped to a single repository's indexed chunks).
 
 ## Phase 10 — DevOps
 
