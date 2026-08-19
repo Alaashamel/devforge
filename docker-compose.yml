@@ -1,5 +1,11 @@
 name: devforge
 
+# Full local stack: postgres + api + web + ai + edge nginx.
+#   docker compose up --build
+# then open http://localhost:8080
+#
+# Production values (secrets) are read from the host environment; the dev
+# defaults mirror .env.example. Never commit real secrets here.
 services:
   postgres:
     image: pgvector/pgvector:pg16
@@ -17,6 +23,92 @@ services:
       interval: 5s
       timeout: 3s
       retries: 10
+
+  api:
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    container_name: devforge-api
+    environment:
+      NODE_ENV: production
+      HOST: 0.0.0.0
+      PORT: 4000
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      DATABASE_URL: postgres://devforge:devforge@postgres:5432/devforge
+      CORS_ORIGINS: ${WEB_BASE_URL:-http://localhost:8080}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:-}
+      JWT_ACCESS_TTL: ${JWT_ACCESS_TTL:-15m}
+      REFRESH_TTL_DAYS: ${REFRESH_TTL_DAYS:-7}
+      WEB_BASE_URL: ${WEB_BASE_URL:-http://localhost:8080}
+      API_BASE_URL: ${API_BASE_URL:-http://localhost:8080}
+      GITHUB_CLIENT_ID: ${GITHUB_CLIENT_ID:-}
+      GITHUB_CLIENT_SECRET: ${GITHUB_CLIENT_SECRET:-}
+      GITHUB_OAUTH_CALLBACK_URL: ${GITHUB_OAUTH_CALLBACK_URL:-http://localhost:8080/api/v1/github/oauth/callback}
+      GITHUB_ENCRYPTION_KEY: ${GITHUB_ENCRYPTION_KEY:-}
+      AI_SERVICE_URL: http://ai:5001
+      AI_JOB_SECRET: ${AI_JOB_SECRET:-}
+      AI_JOB_TTL_SECONDS: ${AI_JOB_TTL_SECONDS:-300}
+      AI_ARCHIVE_TTL_SECONDS: ${AI_ARCHIVE_TTL_SECONDS:-900}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'node -e "fetch(\"http://localhost:4000/api/v1/health/ready\").then(r=>process.exit(r.status===200?0:1)).catch(()=>process.exit(1))"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  ai:
+    build:
+      context: .
+      dockerfile: apps/ai/Dockerfile
+    container_name: devforge-ai
+    environment:
+      AI_HOST: 0.0.0.0
+      AI_PORT: 5001
+      AI_LOG_LEVEL: ${LOG_LEVEL:-info}
+      AI_DATABASE_URL: postgres://devforge:devforge@postgres:5432/devforge
+      AI_JOB_SECRET: ${AI_JOB_SECRET:-}
+      AI_JOB_TOKEN_TTL_SECONDS: ${AI_JOB_TTL_SECONDS:-300}
+      AI_PRIMARY_PROVIDER: ${AI_PRIMARY_PROVIDER:-local}
+      AI_FALLBACK_PROVIDER: ${AI_FALLBACK_PROVIDER:-}
+      AI_OPENAI_API_KEY: ${AI_OPENAI_API_KEY:-}
+      AI_ANTHROPIC_API_KEY: ${AI_ANTHROPIC_API_KEY:-}
+      AI_EMBEDDING_PROVIDER: ${AI_EMBEDDING_PROVIDER:-local}
+      AI_LOCAL_MODEL_URL: ${AI_LOCAL_MODEL_URL:-http://host.docker.internal:11434/v1}
+    depends_on:
+      postgres:
+        condition: service_healthy
+    healthcheck:
+      test: ['CMD-SHELL', 'python -c "import urllib.request; urllib.request.urlopen(\"http://localhost:5001/health\", timeout=3)"']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 15s
+
+  web:
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        VITE_API_URL: /api/v1
+    container_name: devforge-web
+    depends_on:
+      - api
+
+  nginx:
+    build:
+      context: infrastructure/nginx
+      dockerfile: Dockerfile
+    container_name: devforge-nginx
+    ports:
+      - '${HTTP_PORT:-8080}:80'
+    depends_on:
+      api:
+        condition: service_healthy
+      web:
+        condition: service_started
 
 volumes:
   pgdata:
