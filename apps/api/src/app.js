@@ -43,6 +43,9 @@ import { createChatService } from './modules/chat/service.js';
 import { createChatRouter } from './modules/chat/routes.js';
 import { createAiService } from './modules/ai/service.js';
 import { createAiRouter, createAiArchiveRouter } from './modules/ai/routes.js';
+import { createMetricsRegistry } from './modules/metrics/registry.js';
+import { createMetricsMiddleware } from './modules/metrics/middleware.js';
+import { createMetricsRouter } from './modules/metrics/routes.js';
 
 function buildDefaultAuth() {
   const accessTokens = createAccessTokenService({
@@ -119,7 +122,7 @@ export function buildDefaultModules({
   };
 }
 
-export function createApp({ auth = null, modules = null, realtime = null } = {}) {
+export function createApp({ auth = null, modules = null, realtime = null, metrics = null } = {}) {
   const app = express();
 
   app.disable('x-powered-by');
@@ -130,6 +133,10 @@ export function createApp({ auth = null, modules = null, realtime = null } = {})
 
   app.use(requestId());
   app.use(requestLogger());
+
+  const metricsRegistry = metrics?.registry ?? createMetricsRegistry();
+  app.use(metrics?.middleware ?? createMetricsMiddleware(metricsRegistry));
+  app.locals.metrics = metricsRegistry;
 
   app.get('/', (_req, res) => {
     res.json({
@@ -275,6 +282,7 @@ export function createApp({ auth = null, modules = null, realtime = null } = {})
     }),
   );
   app.use('/api/v1/ai/archive', createAiArchiveRouter({ service: moduleBundle.ai }));
+  app.use('/metrics', createMetricsRouter({ registry: metricsRegistry }));
 
   app.use(notFoundHandler());
   app.use(errorHandler());
