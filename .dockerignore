@@ -1,0 +1,17 @@
+node_modules
+**/node_modules
+**/dist
+**/.vite
+.git
+.github
+.env
+.env.*
+!.env.example
+*.log
+.ruff_cache
+**/__pycache__
+**/*.pyc
+.coverage
+coverage
+tests/e2e
+api-smoke.log
