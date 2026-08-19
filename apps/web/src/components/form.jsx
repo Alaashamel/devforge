@@ -21,7 +21,7 @@ export function Field({ label, children }) {
 export function ErrorBanner({ children }) {
   if (!children) return null;
   return (
-    <div className="rounded-md border border-red-500/40 px-3 py-2 text-sm text-red-400">
+    <div role="alert" className="rounded-md border border-red-500/40 px-3 py-2 text-sm text-red-400">
       {children}
     </div>
   );
