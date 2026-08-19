@@ -23,4 +23,4 @@ jobs:
         run: docker build -f apps/ai/Dockerfile -t devforge-ai:ci .
 
       - name: Build nginx image
-        run: docker build infrastructure/nginx -t devforge-nginx:ci .
+        run: docker build infrastructure/nginx -t devforge-nginx:ci
