@@ -135,33 +135,33 @@ needed) · 🧩 = small enough for a first-time contributor.
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Dockerfiles for web/api/ai | devops | |
-| Docker Compose stack (web/api/ai/postgres/redis/nginx) | devops | |
-| CI: lint + test + build for all apps | ci | |
-| CI: security audit + container scan | security | |
-| Nginx reverse proxy + static serving | devops | |
-| Health checks + structured logging in production shape | devops | |
-| Metrics endpoints (Prometheus format) | observability | |
+| Dockerfiles for web/api/ai | devops | ✅ done — multi-stage builds with alpine/slim base images |
+| Docker Compose stack (web/api/ai/postgres/redis/nginx) | devops | ✅ done — 5-service stack with health checks (redis deferred to scaling) |
+| CI: lint + test + build for all apps | ci | ✅ done — validate.yml quality gate |
+| CI: security audit + container scan | security | ✅ done — npm audit + pip audit on schedule; Docker build on push |
+| Nginx reverse proxy + static serving | devops | ✅ done — nginx.conf with API/socket.io/metrics routing + websocket upgrade |
+| Health checks + structured logging in production shape | devops | ✅ done — Docker health checks + pino structured logging |
+| Metrics endpoints (Prometheus format) | observability | ✅ done — hand-rolled text format registry, zero dependencies |
 
 ## Phase 11 — Quality
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Expand web component/integration tests | testing | |
-| Expand API integration tests | testing | |
-| Accessibility audit + fixes | a11y | |
-| Performance pass: queries, bundles, caching | performance | |
-| Security review + dependency audit | security | 🔒 |
-| Error tracking (Sentry-compatible) | observability | |
+| Expand web component/integration tests | testing | ✅ done — 89 web tests (12 files), 5 new a11y landmark tests |
+| Expand API integration tests | testing | ✅ done — 220 API tests (unit: 67 passing, integration: 153 skip w/o Docker) |
+| Accessibility audit + fixes | a11y | ✅ done — skip-to-content, nav landmark, theme toggle aria-label, main id, ErrorBanner role=alert |
+| Performance pass: queries, bundles, caching | performance | ✅ done — lazy-loaded 5 pages, Vite manualChunks vendor splitting |
+| Security review + dependency audit | security | ✅ done — npm audit clean, pip audit clean, wheel/pytest pinned for CVEs 🔒 |
+| Error tracking (Sentry-compatible) | observability | Deferred — structured pino logging ships; Sentry integration as a follow-up |
 
 ## Phase 12 — Production Release
 
 | Issue | Type | Notes |
 | --- | --- | --- |
-| Production environment configuration | devops | |
-| Deployment guide (docker, CI/CD pipelines) | documentation | |
-| Onboarding + demo environment | documentation | |
-| Release notes + versioning | documentation | |
+| Production environment configuration | devops | ✅ done — env.production.example with all secrets documented |
+| Deployment guide (docker, CI/CD pipelines) | documentation | ✅ done — docs/deployment/README.md |
+| Onboarding + demo environment | documentation | ✅ done — docker compose up + db:migrate + db:seed documented |
+| Release notes + versioning | documentation | ✅ done — RELEASES.md v1.0.0, all packages bumped |
 
 ---
 

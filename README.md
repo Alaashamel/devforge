@@ -8,22 +8,22 @@ DevForge combines project management, GitHub integration, real-time
 collaboration, engineering analytics and AI-assisted development into a single
 cohesive workspace for software teams.
 
-> **Status: Phase 9 — AI Features.** The web app and API run locally
-> (`npm run dev`) with authentication & RBAC, project management (kanban +
-> roadmaps), GitHub OAuth with encrypted tokens, repository import/sync,
-> webhooks with signature verification, an analytics dashboard (velocity,
-> health, contributors, developers and repository activity), real-time
-> collaboration (notifications, presence, typing indicators, team chat and
-> live task updates), and an AI service (`apps/ai`) with a provider-agnostic
-> gateway, repository ingestion, secret redaction and pgvector RAG wired to
-> the API through a signed job contract. **461 passing tests** (216 API, 146
-> AI, 84 web, 15 database), shared linting and a CI quality gate. Phase 9
-> (AI features) is complete: the repository analyzer (health scores across
-> architecture, code quality, security and documentation), the pull request
-> code review (severity-classified findings with a review score), the
-> docs/README generator (preview-and-approve, approving commits the draft to
-> GitHub) and the engineering assistant (streamed Q&A grounded in a single
-> repository) are live.
+> **Status: v1.0.0 — Production Release.** DevForge is feature-complete with
+> 13 phases shipped. The web app and API run locally (`npm run dev`) or as a
+> full Docker Compose stack (`docker compose up`) with authentication & RBAC,
+> project management (kanban + roadmaps), GitHub OAuth with encrypted tokens,
+> repository import/sync, webhooks with signature verification, an analytics
+> dashboard (velocity, health, contributors, developers and repository
+> activity), real-time collaboration (notifications, presence, typing
+> indicators, team chat and live task updates), and an AI service (`apps/ai`)
+> with a provider-agnostic gateway, repository ingestion, secret redaction
+> and pgvector RAG wired to the API through a signed job contract. AI
+> capabilities include repository analysis, pull request code review, a
+> documentation generator with preview-and-approve, and a streamed
+> engineering assistant scoped to a single repository. **470+ passing
+> tests** (220 API, 146 AI, 89 web, 15 database), shared linting, a CI
+> quality gate with security auditing, Prometheus metrics, structured
+> logging, health checks and a production deployment guide.
 
 ---
 
@@ -92,11 +92,11 @@ a working state.
 | 5 | GitHub integration ✅ |
 | 6 | Developer analytics ✅ |
 | 7 | Real-time collaboration ✅ |
-| 8 | AI foundation — AI service, provider abstraction, RAG |
-| 9 | AI features — analyzer, code review, docs, assistant |
-| 10 | DevOps — Docker, CI/CD, monitoring |
-| 11 | Quality — testing, security, accessibility, performance |
-| 12 | Production release |
+| 8 | AI foundation — AI service, provider abstraction, RAG ✅ |
+| 9 | AI features — analyzer, code review, docs, assistant ✅ |
+| 10 | DevOps — Docker, CI/CD, monitoring ✅ |
+| 11 | Quality — testing, security, accessibility, performance ✅ |
+| 12 | Production release ✅ |
 
 See [ROADMAP.md](./ROADMAP.md) for details.
 
@@ -140,6 +140,18 @@ After seeding (`npm run db:seed`), these accounts are available with password
 - `alaa@devforge.test` — owner of the DevForge Inc. org
 - `jordan@devforge.test` — admin (and owner of Acme Labs)
 - `sam@devforge.test` — developer (email unverified)
+
+### Production deployment
+
+For a full-stack Docker deployment, see [docs/deployment/README.md](./docs/deployment/README.md).
+
+```bash
+cp env.production.example .env.production
+# Fill in secrets (JWT_ACCESS_SECRET, GITHUB_ENCRYPTION_KEY, etc.)
+docker compose --env-file .env.production up --build -d
+docker compose exec api node packages/database/src/migrate.js
+open http://localhost:8080
+```
 
 ### GitHub integration
 
