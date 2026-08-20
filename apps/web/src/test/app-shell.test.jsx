@@ -43,11 +43,12 @@ describe('AppShell', () => {
     const user = userEvent.setup();
     renderShell();
 
-    const button = screen.getByRole('button', { name: 'Light' });
+    const button = screen.getByRole('button', { name: /toggle theme/i });
+    expect(button).toHaveTextContent('Light');
     await user.click(button);
 
     expect(document.documentElement.dataset.theme).toBe('light');
     expect(window.localStorage.getItem('devforge.theme')).toBe('light');
-    expect(screen.getByRole('button', { name: 'Dark' })).toBeInTheDocument();
+    expect(button).toHaveTextContent('Dark');
   });
 });
