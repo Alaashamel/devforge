@@ -8,7 +8,7 @@ from .routers import assistant, health, jobs
 def create_app() -> FastAPI:
     app = FastAPI(
         title="DevForge AI Service",
-        version="0.1.0",
+        version="1.0.0",
         description="Repository ingestion, analysis and retrieval for DevForge.",
     )
     app.include_router(health.router)
