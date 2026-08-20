@@ -411,7 +411,76 @@ Added:
   — conversation list (new/delete), message thread with source chips, and a
   live-streaming reply box that renders deltas as they arrive.
 - Test counts: 216 API tests (16 files), 146 AI pytest tests (21 files —
-  new `test_assistant.py`), 84 web tests (11 files — new
-  `ai-assistant-tab.test.jsx`), 15 database tests (runner covers migration
-  `0012`).
+   new `test_assistant.py`), 84 web tests (11 files — new
+   `ai-assistant-tab.test.jsx`), 15 database tests (runner covers migration
+   `0012`).
+
+### Phase 10 — DevOps
+
+Added:
+
+- Dockerfiles: `apps/api/Dockerfile` (multi-stage node:20-alpine),
+  `apps/web/Dockerfile` (Vite build + nginx:alpine), `apps/ai/Dockerfile`
+  (python:3.13-slim with pip install), `infrastructure/nginx/Dockerfile`
+  (nginx:alpine).
+- `docker-compose.yml`: full 5-service stack (postgres/pgvector, api, web,
+  ai, nginx) with health checks, build args, and environment wiring.
+- `infrastructure/nginx/nginx.conf`: reverse proxy routing `/api/v1/*` to the
+  API, `/socket.io/*` with websocket upgrade headers, `/metrics` to the API,
+  and static file serving from the web build.
+- CI workflows: `.github/workflows/security.yml` (npm audit + pip audit on
+  schedule and push to main), `.github/workflows/docker.yml` (build all 4
+  Docker images on push/PR to main).
+- `.dockerignore` excluding node_modules, __pycache__, .git, test data and
+  build artifacts from Docker contexts.
+- Prometheus metrics module (`apps/api/src/modules/metrics/`): hand-rolled
+  text format 0.0.4 registry with Counter, Histogram and Gauge classes,
+  Express middleware for request duration histograms, and `GET /metrics`
+  endpoint exposing API and process metrics.
+- 4 metrics unit tests covering registry, middleware and route integration.
+- `apps/ai/pyproject.toml`: `wheel>=0.46.2` (CVE-2026-24049 fix),
+  `pytest>=9.0.3` (PYSEC-2026-1845 fix).
+- Test counts: 220 API tests (17 files — 4 new metrics tests), 145 AI
+  pytest tests (21 files), 84 web tests, 15 database tests.
+
+### Phase 11 — Quality
+
+Added:
+
+- Accessibility improvements to the web app: skip-to-content link with
+  `#main-content` target, `<nav aria-label="Main navigation">`, theme toggle
+  `aria-label="Toggle theme"`, `<main id="main-content">` landmark, and
+  ErrorBanner `role="alert"` for screen reader validation announcements.
+- 5 a11y landmark tests (`apps/web/src/test/a11y.test.jsx`) verifying
+  skip link, nav landmark, main id, theme toggle aria-label, and error
+  banner role.
+- Performance: lazy-loaded 5 pages (Repositories, RepositoryDetail,
+  TaskDetail, Chat, Analytics) via `React.lazy` with Suspense wrappers,
+  splitting each page into its own chunk.
+- Vite `manualChunks` configuration extracting vendor-react (react,
+  react-dom, react-router-dom), vendor-query (@tanstack/react-query), and
+  vendor-charts (recharts) into separate bundles.
+- Updated `app-shell.test.jsx` for the new theme toggle `aria-label`
+  selector.
+- Security: `npm audit --audit-level=high` clean, `python -m pip_audit`
+  clean, `wheel>=0.46.2` and `pytest>=9.0.3` pinned for CVE remediation.
+- Test counts: 220 API tests (unit), 89 web tests (12 files — 5 new a11y
+  tests), 145 AI pytest tests.
+
+### Phase 12 — Production Release (v1.0.0)
+
+Added:
+
+- Version bump to v1.0.0 across all packages: root `package.json`,
+  `apps/api/package.json`, `apps/web/package.json`, `apps/ai/pyproject.toml`,
+  API root handler `version` field, AI service metadata, and web app shell
+  footer.
+- `docs/deployment/README.md`: full production deployment guide covering the
+  Docker Compose stack, health checks, Prometheus monitoring, TLS
+  termination, backups and restore, horizontal scaling notes, and
+  troubleshooting table.
+- `env.production.example`: production environment template with all required
+  secrets explicitly documented.
+- `RELEASES.md`: v1.0.0 release notes covering all features, 470+ test
+  summary, and no breaking changes.
 
