@@ -12,12 +12,22 @@ import { ForgotPassword } from './pages/forgot-password.jsx';
 import { ResetPassword } from './pages/reset-password.jsx';
 import { Projects } from './pages/projects.jsx';
 import { ProjectDetail } from './pages/project-detail.jsx';
-import { TaskDetail } from './pages/task-detail.jsx';
-import { Repositories } from './pages/repositories.jsx';
-import { RepositoryDetail } from './pages/repository-detail.jsx';
-import { Chat } from './pages/chat.jsx';
 
-const Analytics = lazy(() => import('./pages/analytics.jsx'));
+const TaskDetail = lazy(() =>
+  import('./pages/task-detail.jsx').then((m) => ({ default: m.TaskDetail })),
+);
+const Repositories = lazy(() =>
+  import('./pages/repositories.jsx').then((m) => ({ default: m.Repositories })),
+);
+const RepositoryDetail = lazy(() =>
+  import('./pages/repository-detail.jsx').then((m) => ({ default: m.RepositoryDetail })),
+);
+const Chat = lazy(() =>
+  import('./pages/chat.jsx').then((m) => ({ default: m.Chat })),
+);
+const Analytics = lazy(() =>
+  import('./pages/analytics.jsx').then((m) => ({ default: m.Analytics })),
+);
 
 function LazyFallback() {
   return <p className="text-sm text-muted">Loading…</p>;
@@ -43,10 +53,10 @@ export function App() {
           <Route index element={<Dashboard />} />
           <Route path="projects" element={<Projects />} />
           <Route path="projects/:projectId" element={<ProjectDetail />} />
-          <Route path="projects/:projectId/tasks/:taskId" element={<TaskDetail />} />
-          <Route path="repositories" element={<Repositories />} />
-          <Route path="repositories/:repoId" element={<RepositoryDetail />} />
-          <Route path="chat" element={<Chat />} />
+          <Route path="projects/:projectId/tasks/:taskId" element={<Suspense fallback={<LazyFallback />}><TaskDetail /></Suspense>} />
+          <Route path="repositories" element={<Suspense fallback={<LazyFallback />}><Repositories /></Suspense>} />
+          <Route path="repositories/:repoId" element={<Suspense fallback={<LazyFallback />}><RepositoryDetail /></Suspense>} />
+          <Route path="chat" element={<Suspense fallback={<LazyFallback />}><Chat /></Suspense>} />
           <Route
             path="analytics"
             element={

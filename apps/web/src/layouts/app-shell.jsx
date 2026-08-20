@@ -102,6 +102,12 @@ export function AppShell() {
 
   return (
     <div className="flex min-h-screen bg-canvas text-ink">
+      <a
+        href="#main-content"
+        className="sr-only focus:not-sr-only focus:absolute focus:z-50 focus:m-2 focus:rounded-md focus:bg-accent focus:px-3 focus:py-2 focus:text-sm focus:text-canvas"
+      >
+        Skip to main content
+      </a>
       <aside className="flex w-56 shrink-0 flex-col border-r border-line bg-panel">
         <div className="flex h-14 items-center gap-2 border-b border-line px-4">
           <span className="font-mono text-sm font-semibold tracking-tight text-accent">
@@ -109,7 +115,7 @@ export function AppShell() {
           </span>
         </div>
 
-        <nav className="flex-1 space-y-1 overflow-y-auto p-3">
+        <nav aria-label="Main navigation" className="flex-1 space-y-1 overflow-y-auto p-3">
           {primaryNav.map((item) => (
             <NavLink
               key={item.to}
@@ -142,7 +148,7 @@ export function AppShell() {
         </nav>
 
         <div className="border-t border-line p-3 text-[11px] text-muted">
-          DevForge v0.1.0
+          DevForge v1.0.0
         </div>
       </aside>
 
@@ -239,6 +245,7 @@ export function AppShell() {
             <button
               type="button"
               onClick={toggleTheme}
+              aria-label="Toggle theme"
               className="rounded-md border border-line px-3 py-1.5 text-xs text-muted hover:bg-panel hover:text-ink"
             >
               {theme === 'dark' ? 'Light' : 'Dark'}
@@ -246,7 +253,7 @@ export function AppShell() {
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto p-6">
+        <main id="main-content" className="flex-1 overflow-y-auto p-6">
           <Outlet />
         </main>
       </div>

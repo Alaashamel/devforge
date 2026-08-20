@@ -8,6 +8,10 @@ export default defineConfig({
   server: {
     port: 5173,
   },
+  build: {
+    cssCodeSplit: true,
+    sourcemap: false,
+  },
   test: {
     environment: 'jsdom',
     setupFiles: ['./src/test/setup.js'],

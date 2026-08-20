@@ -141,7 +141,7 @@ export function createApp({ auth = null, modules = null, realtime = null, metric
   app.get('/', (_req, res) => {
     res.json({
       service: 'devforge-api',
-      version: '0.1.0',
+      version: '1.0.0',
       health: '/api/v1/health',
     });
   });
